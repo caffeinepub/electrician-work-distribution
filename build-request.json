@@ -1,0 +1,80 @@
+{
+  "kind": "build_request",
+  "title": "Replace TV Service with Request a Service section and add education options to Job Apply",
+  "projectName": "Technical Tech",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Replace the current 'Television Services' navigation option (in the sidebar, landing page card, and any related routing) with 'Request a Service'. The page title and all references should read 'Request a Service' throughout the app.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "television service option replace to request a service"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Sidebar nav item formerly labeled 'Television Services' now reads 'Request a Service'",
+        "Landing page navigation card formerly labeled 'Television Services' now reads 'Request a Service'",
+        "The services page heading reads 'Request a Service'",
+        "All internal references to the old label are updated"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Update the service/work order categories on the 'Request a Service' page to include exactly these repair service types: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair. These should be the selectable work detail/service type options available when a customer submits a service request.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "work details is television repair, ac repair, fridge repair, ceiling fan and table fan repair"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Service type/work detail dropdown or selection includes: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, Table Fan Repair",
+        "Previous service categories not in this list are removed or replaced",
+        "Backend data model/types for work order categories are updated to support these service types",
+        "A customer can successfully submit a service request selecting any of these five options"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add the following preferred education options to the worker Job Apply multi-step form's 'Preferred Education' field: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication. These should appear as selectable options alongside any existing education options.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "job apply link preffered education option add to electronic commerce engineering ,ac mechanic ,and this work related education you suggetion to add"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The preferred education field on the job apply form includes: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, Diploma in Electronics & Communication",
+        "All new education options are selectable in the multi-step job application form",
+        "Previously existing education options are preserved unless they conflict",
+        "The education field data is submitted correctly with the job application"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not change the URL route path for the services page if other components depend on it — only update visible labels and content",
+    "Preserve the existing multi-step job application stepper flow; only add new options to the education field",
+    "Do not alter immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui"
+  ],
+  "nonGoals": [
+    "Adding Internet Identity login or authentication changes",
+    "Changing the admin dashboard, payments, or work orders management pages",
+    "Modifying the electricians management section",
+    "Adding new pages beyond what is described"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "A service/worker job platform with a 'Request a Service' section offering television repair, AC repair, fridge repair, ceiling fan and table fan repair. The worker job apply page includes a preferred education field with options: Electronic Commerce Engineering, AC Mechanic, and other work-related education suggestions.",
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-replace-the-current-television-services-navigation-option-in-the-sidebar-landing-page-card-and-any-related-routing-with-request-a-service-the-page-title-and-all-references-should-read-request-a-service-throughout-the-app",
+      "title": "Replace the current 'Television Services' navigation option (in the sidebar, landing page card, and any related routing) with 'Request a Service'. The page title and all references should read 'Request a Service' throughout the app.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-service-work-order-categories-on-the-request-a-service-page-to-include-exactly-these-repair-service-types-television-repair-ac-repair-fridge-repair-ceiling-fan-repair-and-table-fan-repair-these-should-be-the-selectable-work-detail-service-type-options-available-when-a-customer-submits-a-service-request",
+      "title": "Update the service/work order categories on the 'Request a Service' page to include exactly these repair service types: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair. These should be the selectable work detail/service type options available when a customer submits a service request.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-the-following-preferred-education-options-to-the-worker-job-apply-multi-step-form-s-preferred-education-field-electronic-commerce-engineering-ac-mechanic-electrical-engineering-iti-electrician-trade-diploma-in-refrigeration-air-conditioning-and-diploma-in-electronics-communication-these-should-appear-as-selectable-options-alongside-any-existing-education-options",
+      "title": "Add the following preferred education options to the worker Job Apply multi-step form's 'Preferred Education' field: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication. These should appear as selectable options alongside any existing education options.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Replace TV service option with 'Request a Service' section; work details include television repair, AC repair, fridge repair, ceiling fan and table fan repair",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Add preferred education options to job apply page: Electronic Commerce Engineering, AC Mechanic, and other relevant work-related education suggestions",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Technical Tech",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}
