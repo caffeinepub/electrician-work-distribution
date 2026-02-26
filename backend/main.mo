@@ -64,31 +64,35 @@ actor {
     };
   };
 
+  public type WorkAvailability = {
+    #fullTime;
+    #partTime;
+  };
+
   public type RepairServiceType = {
-    #television;
-    #ac;
-    #fridge;
-    #ceilingFan;
-    #tableFan;
+    #electronicRepair;
+    #acTechnician;
+    #fridgeRepairWork;
+    #electrician;
   };
 
   module RepairServiceType {
     public func toText(t : RepairServiceType) : Text {
       switch (t) {
-        case (#television) { "Television Repair" };
-        case (#ac) { "AC Repair" };
-        case (#fridge) { "Fridge Repair" };
-        case (#ceilingFan) { "Ceiling Fan Repair" };
-        case (#tableFan) { "Table Fan Repair" };
+        case (#electronicRepair) { "Electronic Repair" };
+        case (#acTechnician) { "AC Technician" };
+        case (#fridgeRepairWork) { "Fridge Repair Work" };
+        case (#electrician) { "Electrician" };
       };
     };
   };
 
-  type Electrician = {
+  public type Electrician = {
     id : Nat;
     name : Text;
     specialist : Speciality;
     isAvailable : Bool;
+    workAvailability : WorkAvailability;
     email : Text;
     address : Text;
     hourlyRate : Nat;
@@ -134,9 +138,35 @@ actor {
     };
   };
 
+  type ApplicationProcessStatus = {
+    #pending;
+    #accepted;
+    #declined;
+    #cancelled;
+    #verifiedPendingAssignment;
+  };
+
+  module ApplicationProcessStatus {
+    public func toText(status : ApplicationProcessStatus) : Text {
+      switch (status) {
+        case (#pending) { "Pending" };
+        case (#accepted) { "Accepted" };
+        case (#declined) { "Declined" };
+        case (#cancelled) { "Cancelled" };
+        case (#verifiedPendingAssignment) { "Verified - Pending Assignment" };
+      };
+    };
+  };
+
   type Rating = {
     rating : Nat;
     comment : Text;
+  };
+
+  type WorkOrderApplication = {
+    workOrderId : Nat;
+    applicant : Principal;
+    appliedAt : Time.Time;
   };
 
   type WorkOrder = {
@@ -146,6 +176,7 @@ actor {
     location : Text;
     priority : Nat;
     status : WorkOrderStatus;
+    applicationStatus : ApplicationProcessStatus;
     issuedElectrician : Nat;
     createdAt : Time.Time;
     customerEmail : Text;
@@ -166,13 +197,58 @@ actor {
 
   let openElectricians = Map.empty<Nat, Electrician>();
   let openWorkOrders = Map.empty<Nat, WorkOrder>();
+  let workOrderApplications = Map.empty<Nat, WorkOrderApplication>();
+  let jobAlertSubscriptions = Map.empty<Principal, JobAlertSubscription>();
 
   var nextElectricianId = 1;
   var nextWorkOrderId = 1;
 
+  public type JobAlertSubscription = {
+    principal : Principal;
+    subscribedAt : Time.Time;
+  };
+
+  public shared ({ caller }) func subscribeToJobAlerts() : async () {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Anonymous users cannot subscribe to job alerts. Please authenticate first.");
+    };
+    if (jobAlertSubscriptions.containsKey(caller)) {
+      Runtime.trap("Caller is already subscribed to job alerts!");
+    };
+    let subscription : JobAlertSubscription = {
+      principal = caller;
+      subscribedAt = Time.now();
+    };
+    jobAlertSubscriptions.add(caller, subscription);
+  };
+
+  public query ({ caller }) func isSubscribedToJobAlerts() : async Bool {
+    jobAlertSubscriptions.containsKey(caller);
+  };
+
+  type PublicJobAlertSubscription = {
+    subscribedAt : Time.Time;
+  };
+
+  public query ({ caller }) func getAllJobAlertSubscriptions() : async [PublicJobAlertSubscription] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all job alert subscriptions.");
+    };
+    let allSubscriptions = jobAlertSubscriptions.toArray();
+    let publicSubscriptions = allSubscriptions.map(
+      func((_, s)) {
+        {
+          subscribedAt = s.subscribedAt;
+        };
+      }
+    );
+    publicSubscriptions;
+  };
+
   public shared ({ caller }) func addElectrician(
     name : Text,
     specialist : Speciality,
+    workAvailability : WorkAvailability,
     email : Text,
     address : Text,
     hourlyRate : Nat,
@@ -182,12 +258,14 @@ actor {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can add electricians");
     };
+
     let id = nextElectricianId;
     let electrician : Electrician = {
       id;
       name;
       specialist;
       isAvailable = true;
+      workAvailability;
       email;
       address;
       hourlyRate;
@@ -204,6 +282,7 @@ actor {
     name : ?Text,
     specialist : ?Speciality,
     isAvailable : ?Bool,
+    workAvailability : ?WorkAvailability,
     email : ?Text,
     address : ?Text,
     hourlyRate : ?Nat,
@@ -229,6 +308,10 @@ actor {
           isAvailable = switch (isAvailable) {
             case (null) { electrician.isAvailable };
             case (?availability) { availability };
+          };
+          workAvailability = switch (workAvailability) {
+            case (null) { electrician.workAvailability };
+            case (?newAvailability) { newAvailability };
           };
           email = switch (email) {
             case (null) { electrician.email };
@@ -314,6 +397,7 @@ actor {
       workerRating = null;
       customerRating = null;
       preferredEducation;
+      applicationStatus = #pending;
     };
     openWorkOrders.add(id, workOrder);
     nextWorkOrderId += 1;
@@ -344,6 +428,7 @@ actor {
           workerRating = workOrder.workerRating;
           customerRating = workOrder.customerRating;
           preferredEducation = workOrder.preferredEducation;
+          applicationStatus = workOrder.applicationStatus;
         };
         openWorkOrders.add(id, updated);
       };
@@ -378,6 +463,7 @@ actor {
           workerRating = workOrder.workerRating;
           customerRating = workOrder.customerRating;
           preferredEducation = workOrder.preferredEducation;
+          applicationStatus = #pending;
         };
         openWorkOrders.add(workOrderId, updated);
       };
@@ -408,6 +494,7 @@ actor {
           workerRating = workOrder.workerRating;
           customerRating = workOrder.customerRating;
           preferredEducation = workOrder.preferredEducation;
+          applicationStatus = workOrder.applicationStatus;
         };
         openWorkOrders.add(id, updated);
       };
@@ -439,6 +526,7 @@ actor {
           workerRating = ?newRating;
           customerRating = workOrder.customerRating;
           preferredEducation = workOrder.preferredEducation;
+          applicationStatus = workOrder.applicationStatus;
         };
         openWorkOrders.add(workOrderId, updated);
       };
@@ -470,6 +558,38 @@ actor {
           workerRating = workOrder.workerRating;
           customerRating = ?newRating;
           preferredEducation = workOrder.preferredEducation;
+          applicationStatus = workOrder.applicationStatus;
+        };
+        openWorkOrders.add(workOrderId, updated);
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateApplicationStatusForWorkOrder(workOrderId : Nat, newStatus : ApplicationProcessStatus) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can directly update application status");
+    };
+    switch (openWorkOrders.get(workOrderId)) {
+      case (null) { Runtime.trap("Work order not found") };
+      case (?workOrder) {
+        let updated : WorkOrder = {
+          id = workOrder.id;
+          title = workOrder.title;
+          description = workOrder.description;
+          location = workOrder.location;
+          priority = workOrder.priority;
+          status = workOrder.status;
+          issuedElectrician = workOrder.issuedElectrician;
+          createdAt = workOrder.createdAt;
+          customerEmail = workOrder.customerEmail;
+          customerAddress = workOrder.customerAddress;
+          paymentAmount = workOrder.paymentAmount;
+          paymentStatus = workOrder.paymentStatus;
+          paymentMethod = workOrder.paymentMethod;
+          workerRating = workOrder.workerRating;
+          customerRating = workOrder.customerRating;
+          preferredEducation = workOrder.preferredEducation;
+          applicationStatus = newStatus;
         };
         openWorkOrders.add(workOrderId, updated);
       };
@@ -506,7 +626,204 @@ actor {
     filtered.sort();
   };
 
-  public query ({ caller }) func getAvailableServices() : async [RepairServiceType] {
-    [#television, #ac, #fridge, #ceilingFan, #tableFan];
+  public query func getAvailableServices() : async [RepairServiceType] {
+    [#electronicRepair, #acTechnician, #fridgeRepairWork, #electrician];
+  };
+
+  public query ({ caller }) func getCurrentUserWorkOrders() : async [WorkOrder] {
+    if (caller.isAnonymous()) {
+      return [];
+    };
+
+    let allOrders = openWorkOrders.values().toArray();
+    let filtered = allOrders.filter(
+      func(order : WorkOrder) : Bool {
+        switch (userProfiles.get(caller)) {
+          case (?profile) {
+            order.customerEmail == profile.email or order.customerAddress == profile.name;
+          };
+          case (null) { false };
+        };
+      }
+    );
+    filtered.sort();
+  };
+
+  public query ({ caller }) func getWorkOrdersByApplicationStatus(status : ApplicationProcessStatus) : async [WorkOrder] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view work orders by application status");
+    };
+    let all = openWorkOrders.values().toArray();
+    let filtered = all.filter(
+      func(wo : WorkOrder) : Bool {
+        wo.applicationStatus == status;
+      }
+    );
+    filtered.sort();
+  };
+
+  public shared ({ caller }) func applyForWorkOrder(workOrderId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only workers can apply for work orders");
+    };
+
+    switch (openWorkOrders.get(workOrderId)) {
+      case (null) { Runtime.trap("Work order not found") };
+      case (?workOrder) {
+        // Only allow applications for open work orders
+        if (workOrder.status != #open) {
+          Runtime.trap("Work order is not open for applications");
+        };
+        // Only allow application if no one has applied yet (first-apply-first-assign)
+        if (workOrder.applicationStatus != #pending) {
+          Runtime.trap("Work order has already received an application or has been assigned.");
+        };
+        // Record the first applicant
+        let application : WorkOrderApplication = {
+          workOrderId;
+          applicant = caller;
+          appliedAt = Time.now();
+        };
+        workOrderApplications.add(workOrderId, application);
+        // Set status to pending (awaiting admin verification)
+        let updated : WorkOrder = {
+          id = workOrder.id;
+          title = workOrder.title;
+          description = workOrder.description;
+          location = workOrder.location;
+          priority = workOrder.priority;
+          status = workOrder.status;
+          issuedElectrician = workOrder.issuedElectrician;
+          createdAt = workOrder.createdAt;
+          customerEmail = workOrder.customerEmail;
+          customerAddress = workOrder.customerAddress;
+          paymentAmount = workOrder.paymentAmount;
+          paymentStatus = workOrder.paymentStatus;
+          paymentMethod = workOrder.paymentMethod;
+          workerRating = workOrder.workerRating;
+          customerRating = workOrder.customerRating;
+          preferredEducation = workOrder.preferredEducation;
+          applicationStatus = #pending;
+        };
+        openWorkOrders.add(workOrderId, updated);
+      };
+    };
+  };
+
+  public shared ({ caller }) func verifyWorkOrderApplication(workOrderId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can verify work order applications");
+    };
+    switch (openWorkOrders.get(workOrderId)) {
+      case (null) { Runtime.trap("Work order not found") };
+      case (?workOrder) {
+        if (workOrder.applicationStatus != #pending) {
+          Runtime.trap("Work order application is not in pending state");
+        };
+        // Ensure there is a recorded applicant
+        switch (workOrderApplications.get(workOrderId)) {
+          case (null) { Runtime.trap("No application found for this work order") };
+          case (?_application) {
+            let updated : WorkOrder = {
+              id = workOrder.id;
+              title = workOrder.title;
+              description = workOrder.description;
+              location = workOrder.location;
+              priority = workOrder.priority;
+              status = workOrder.status;
+              issuedElectrician = workOrder.issuedElectrician;
+              createdAt = workOrder.createdAt;
+              customerEmail = workOrder.customerEmail;
+              customerAddress = workOrder.customerAddress;
+              paymentAmount = workOrder.paymentAmount;
+              paymentStatus = workOrder.paymentStatus;
+              paymentMethod = workOrder.paymentMethod;
+              workerRating = workOrder.workerRating;
+              customerRating = workOrder.customerRating;
+              preferredEducation = workOrder.preferredEducation;
+              applicationStatus = #verifiedPendingAssignment;
+            };
+            openWorkOrders.add(workOrderId, updated);
+          };
+        };
+      };
+    };
+  };
+
+  public shared ({ caller }) func acceptWorkOrder(workOrderId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can confirm work order assignment");
+    };
+    switch (openWorkOrders.get(workOrderId)) {
+      case (null) { Runtime.trap("Work order not found") };
+      case (?workOrder) {
+        if (workOrder.applicationStatus != #verifiedPendingAssignment) {
+          Runtime.trap("Cannot accept work order that is not verified and pending assignment");
+        };
+        let updated : WorkOrder = {
+          id = workOrder.id;
+          title = workOrder.title;
+          description = workOrder.description;
+          location = workOrder.location;
+          priority = workOrder.priority;
+          status = #inProgress;
+          issuedElectrician = workOrder.issuedElectrician;
+          createdAt = workOrder.createdAt;
+          customerEmail = workOrder.customerEmail;
+          customerAddress = workOrder.customerAddress;
+          paymentAmount = workOrder.paymentAmount;
+          paymentStatus = workOrder.paymentStatus;
+          paymentMethod = workOrder.paymentMethod;
+          workerRating = workOrder.workerRating;
+          customerRating = workOrder.customerRating;
+          preferredEducation = workOrder.preferredEducation;
+          applicationStatus = #accepted;
+        };
+        openWorkOrders.add(workOrderId, updated);
+      };
+    };
+  };
+
+  public shared ({ caller }) func declineWorkOrder(workOrderId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can decline work order applications");
+    };
+    switch (openWorkOrders.get(workOrderId)) {
+      case (null) { Runtime.trap("Work order not found") };
+      case (?workOrder) {
+        if (workOrder.applicationStatus != #pending and workOrder.applicationStatus != #verifiedPendingAssignment) {
+          Runtime.trap("Cannot decline work order that is not pending or verified-pending-assignment");
+        };
+        // Remove the recorded application so a new worker can apply
+        workOrderApplications.remove(workOrderId);
+        let updated : WorkOrder = {
+          id = workOrder.id;
+          title = workOrder.title;
+          description = workOrder.description;
+          location = workOrder.location;
+          priority = workOrder.priority;
+          status = workOrder.status;
+          issuedElectrician = workOrder.issuedElectrician;
+          createdAt = workOrder.createdAt;
+          customerEmail = workOrder.customerEmail;
+          customerAddress = workOrder.customerAddress;
+          paymentAmount = workOrder.paymentAmount;
+          paymentStatus = workOrder.paymentStatus;
+          paymentMethod = workOrder.paymentMethod;
+          workerRating = workOrder.workerRating;
+          customerRating = workOrder.customerRating;
+          preferredEducation = workOrder.preferredEducation;
+          applicationStatus = #declined;
+        };
+        openWorkOrders.add(workOrderId, updated);
+      };
+    };
+  };
+
+  public query ({ caller }) func getWorkOrderApplication(workOrderId : Nat) : async ?WorkOrderApplication {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view work order applications");
+    };
+    workOrderApplications.get(workOrderId);
   };
 };

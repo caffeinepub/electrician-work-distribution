@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-replace-the-current-television-services-navigation-option-in-the-sidebar-landing-page-card-and-any-related-routing-with-request-a-service-the-page-title-and-all-references-should-read-request-a-service-throughout-the-app",
-      "featureTitle": "Replace the current 'Television Services' navigation option (in the sidebar, landing page card, and any related routing) with 'Request a Service'. The page title and all references should read 'Request a Service' throughout the app.",
+      "featureId": "feature-simplify-the-job-application-process-on-the-job-board-page-so-workers-can-apply-to-a-job-with-minimal-steps-reduce-the-multi-step-application-dialog-to-a-single-click-or-single-step-confirmation-e-g-one-apply-now-button-with-a-brief-confirmation-prompt-removing-unnecessary-intermediate-steps-while-still-recording-the-application-in-the-backend",
+      "featureTitle": "Simplify the job application process on the Job Board page so workers can apply to a job with minimal steps — reduce the multi-step application dialog to a single-click or single-step confirmation (e.g., one 'Apply Now' button with a brief confirmation prompt), removing unnecessary intermediate steps while still recording the application in the backend.",
       "files": [
-        "frontend/src/components/AppSidebar.tsx",
-        "frontend/src/pages/LandingPage.tsx",
-        "frontend/src/pages/Services.tsx"
+        "frontend/src/pages/JobBoard.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -24,10 +22,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-service-work-order-categories-on-the-request-a-service-page-to-include-exactly-these-repair-service-types-television-repair-ac-repair-fridge-repair-ceiling-fan-repair-and-table-fan-repair-these-should-be-the-selectable-work-detail-service-type-options-available-when-a-customer-submits-a-service-request",
-      "featureTitle": "Update the service/work order categories on the 'Request a Service' page to include exactly these repair service types: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair. These should be the selectable work detail/service type options available when a customer submits a service request.",
+      "featureId": "feature-when-there-are-no-available-open-jobs-on-the-job-board-empty-state-display-a-prominent-join-us-panel-that-encourages-workers-to-sign-up-for-job-alerts-the-panel-should-include-a-friendly-message-such-as-no-jobs-available-right-now-join-our-worker-network-and-we-ll-alert-you-when-new-jobs-are-posted-a-join-us-call-to-action-button-and-a-secondary-note-reassuring-workers-that-they-ll-be-notified-when-jobs-become-available",
+      "featureTitle": "When there are no available/open jobs on the Job Board (empty state), display a prominent 'Join Us' panel that encourages workers to sign up for job alerts. The panel should include a friendly message such as 'No jobs available right now — Join our worker network and we'll alert you when new jobs are posted!', a 'Join Us' call-to-action button, and a secondary note reassuring workers that they'll be notified when jobs become available.",
       "files": [
-        "frontend/src/pages/Services.tsx"
+        "frontend/src/pages/JobBoard.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -44,9 +42,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-the-following-preferred-education-options-to-the-worker-job-apply-multi-step-form-s-preferred-education-field-electronic-commerce-engineering-ac-mechanic-electrical-engineering-iti-electrician-trade-diploma-in-refrigeration-air-conditioning-and-diploma-in-electronics-communication-these-should-appear-as-selectable-options-alongside-any-existing-education-options",
-      "featureTitle": "Add the following preferred education options to the worker Job Apply multi-step form's 'Preferred Education' field: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication. These should appear as selectable options alongside any existing education options.",
+      "featureId": "feature-wire-the-join-us-button-on-the-job-board-empty-state-panel-to-call-the-backend-job-alert-subscription-function-after-a-successful-subscription-display-a-success-message-such-as-you-re-on-the-list-we-ll-alert-you-when-new-jobs-are-posted-and-disable-or-update-the-button-to-prevent-duplicate-submissions",
+      "featureTitle": "Wire the 'Join Us' button on the Job Board empty-state panel to call the backend job alert subscription function. After a successful subscription, display a success message such as 'You're on the list! We'll alert you when new jobs are posted.' and disable or update the button to prevent duplicate submissions.",
       "files": [
+        "frontend/src/hooks/useQueries.ts",
         "frontend/src/pages/JobBoard.tsx"
       ],
       "components": [
@@ -59,7 +58,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-4"
       ],
       "confidence": "high"
     }

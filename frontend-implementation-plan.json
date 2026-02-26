@@ -1,66 +1,63 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Replace TV Service with Request a Service section and add education options to Job Apply",
+  "title": "Simplified Job Application Flow & 'No Available Jobs' Join Us Prompt",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Replace 'Television Services' navigation option with 'Request a Service' throughout the app including sidebar, landing page card, routing, and page title",
+      "summary": "Simplify the job application process to a single-click or single-step confirmation, replacing the multi-step stepper dialog while maintaining backend application recording",
       "acceptanceCriteria": [
-        "Sidebar nav item formerly labeled 'Television Services' now reads 'Request a Service'",
-        "Landing page navigation card formerly labeled 'Television Services' now reads 'Request a Service'",
-        "The services page heading reads 'Request a Service'",
-        "All internal references to the old label are updated"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AppSidebar.tsx",
-          "operation": "modify",
-          "description": "Update the sidebar navigation item label from 'Television Services' to 'Request a Service'. Preserve the existing route path to /services to maintain compatibility with other components that depend on it."
-        },
-        {
-          "path": "frontend/src/pages/LandingPage.tsx",
-          "operation": "modify",
-          "description": "Update the landing page navigation card label from 'Television Services' to 'Request a Service'. Replace the icon reference from 'frontend/public/assets/generated/tv-services-icon.dim_256x256.png' to 'frontend/public/assets/generated/request-service-icon.dim_256x256.png' if a new icon is generated, or reuse the existing icon with updated alt text. Keep the link destination as /services."
-        },
-        {
-          "path": "frontend/src/pages/Services.tsx",
-          "operation": "modify",
-          "description": "Update the page heading/title from 'Television Services' or similar to 'Request a Service'. Ensure all visible text references to the old label are replaced with 'Request a Service'."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Update service type categories on the Request a Service page to include exactly: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair as selectable work detail options",
-      "acceptanceCriteria": [
-        "Service type/work detail dropdown or selection includes: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, Table Fan Repair",
-        "Previous service categories not in this list are removed or replaced",
-        "Backend data model/types for work order categories are updated to support these service types",
-        "A customer can successfully submit a service request selecting any of these five options"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/Services.tsx",
-          "operation": "modify",
-          "description": "Replace the current service category selection (residential/commercial/industrial) with a service type dropdown or selection field that includes exactly these five options: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair. Update the work order submission form to capture the selected service type and pass it to the backend createWorkOrder method. Remove or replace any previous service category fields that are no longer needed."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Add new preferred education options to the worker Job Apply multi-step form: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication",
-      "acceptanceCriteria": [
-        "The preferred education field on the job apply form includes: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, Diploma in Electronics & Communication",
-        "All new education options are selectable in the multi-step job application form",
-        "Previously existing education options are preserved unless they conflict",
-        "The education field data is submitted correctly with the job application"
+        "Worker can apply to a job in one click or with at most one confirmation step",
+        "Application is still submitted and recorded correctly in the backend",
+        "The simplified flow replaces the existing multi-step stepper dialog on the Job Board",
+        "Applied jobs continue to be tracked and displayed correctly (applied/accepted/declined states)"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/JobBoard.tsx",
           "operation": "modify",
-          "description": "Add the following new education options to the 'Preferred Education' field in the job application multi-step form: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication. Preserve any existing education options unless they conflict. Ensure the multi-step stepper flow remains intact and that the selected education value is correctly submitted with the work order via createWorkOrder."
+          "description": "Replace the multi-step application dialog (JobApplicationStepper and stepper state management) with a simple single-click 'Apply Now' button and a lightweight confirmation dialog. Keep the existing applyForWorkOrder backend call and localStorage tracking for applied jobs. Ensure that clicking 'Apply' triggers the backend call immediately after confirmation, updates the appliedJobs state, and displays success feedback. The simplified flow should maintain all existing job filtering (open/available orders) and application status display (applied/accepted/declined badges)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Display a 'Join Us' empty-state panel when no jobs are available, encouraging workers to sign up for job alerts",
+      "acceptanceCriteria": [
+        "When the Job Board has zero open/available work orders, the 'Join Us' empty-state panel is shown instead of a blank list",
+        "The panel displays an encouraging headline and message about joining the worker network",
+        "A visible 'Join Us' call-to-action button is present in the empty-state panel",
+        "A message reassures workers that they will be alerted when new jobs are posted",
+        "When jobs are available, the normal job listing is shown and the empty-state panel is hidden"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/JobBoard.tsx",
+          "operation": "modify",
+          "description": "Add an empty-state panel that renders when the filtered openWorkOrders array is empty. The panel should display a friendly headline such as 'No jobs available right now', a message encouraging workers to join the worker network and receive alerts when new jobs are posted, a prominent 'Join Us' call-to-action button, and a reassuring note about future job notifications. Conditionally render this panel when openWorkOrders.length === 0, and hide it when jobs are available. Style the panel to be visually prominent and welcoming using existing Tailwind classes."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Wire the 'Join Us' button to call the backend subscribeToJobAlerts function and display success feedback after subscription",
+      "acceptanceCriteria": [
+        "Clicking 'Join Us' triggers a backend call to subscribe the worker for job alerts",
+        "A success confirmation message is shown after successful subscription",
+        "The 'Join Us' button is disabled or changed to a 'Subscribed' state after successful submission",
+        "If the worker is not authenticated, prompt them to log in before subscribing",
+        "Loading and error states are handled gracefully"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a new React Query mutation hook useSubscribeToJobAlerts that wraps the backend actor.subscribeToJobAlerts() call. The hook should return mutation functions (mutate, mutateAsync) and state (isLoading, isError, isSuccess). Include proper error handling and query invalidation if needed. Also add a query hook useIsSubscribedToJobAlerts that wraps actor.isSubscribedToJobAlerts() to check current subscription status."
+        },
+        {
+          "path": "frontend/src/pages/JobBoard.tsx",
+          "operation": "modify",
+          "description": "Wire the 'Join Us' button in the empty-state panel to call useSubscribeToJobAlerts mutation. Before subscribing, check authentication state using useInternetIdentity and prompt the user to log in if not authenticated. After successful subscription, display a success message (e.g., 'You're on the list! We'll alert you when new jobs are posted.') using a toast or inline message. Update the button to a 'Subscribed' state (disabled or with updated text) after successful submission. Handle loading state by disabling the button and showing a spinner. Handle errors gracefully with an error message. Use the useIsSubscribedToJobAlerts query to check if the user is already subscribed and conditionally render the button state on mount."
         }
       ]
     }

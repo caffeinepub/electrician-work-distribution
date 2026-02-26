@@ -1,49 +1,54 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T13:50:04.153Z",
+  "generatedAt": "2026-02-26T16:20:46.251Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
+    "total": 4,
     "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Replace the current 'Television Services' navigation option (in the sidebar, landing page card, and any related routing) with 'Request a Service'. The page title and all references should read 'Request a Service' throughout the app.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AppSidebar.tsx",
-          "frontend/src/pages/LandingPage.tsx",
-          "frontend/src/pages/Services.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AppSidebar.tsx",
-          "frontend/src/pages/LandingPage.tsx",
-          "frontend/src/pages/Services.tsx"
-        ]
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Update the service/work order categories on the 'Request a Service' page to include exactly these repair service types: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair. These should be the selectable work detail/service type options available when a customer submits a service request.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/Services.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/Services.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Add the following preferred education options to the worker Job Apply multi-step form's 'Preferred Education' field: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication. These should appear as selectable options alongside any existing education options.",
+        "summary": "Simplify the job application process on the Job Board page so workers can apply to a job with minimal steps — reduce the multi-step application dialog to a single-click or single-step confirmation (e.g., one 'Apply Now' button with a brief confirmation prompt), removing unnecessary intermediate steps while still recording the application in the backend.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/pages/JobBoard.tsx"
         ],
         "matchedFiles": [
+          "frontend/src/pages/JobBoard.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "When there are no available/open jobs on the Job Board (empty state), display a prominent 'Join Us' panel that encourages workers to sign up for job alerts. The panel should include a friendly message such as 'No jobs available right now — Join our worker network and we'll alert you when new jobs are posted!', a 'Join Us' call-to-action button, and a secondary note reassuring workers that they'll be notified when jobs become available.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/JobBoard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/JobBoard.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Add a backend 'job alert subscription' capability: store a worker's interest/subscription intent when they click 'Join Us' on the empty-state panel. Record the worker's principal and a timestamp so that administrators can later view subscribed workers waiting for job alerts.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Wire the 'Join Us' button on the Job Board empty-state panel to call the backend job alert subscription function. After a successful subscription, display a success message such as 'You're on the list! We'll alert you when new jobs are posted.' and disable or update the button to prevent duplicate submissions.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/JobBoard.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
           "frontend/src/pages/JobBoard.tsx"
         ]
       }
@@ -58,12 +63,11 @@
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/AppSidebar.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/JobBoard.tsx",
-    "frontend/src/pages/LandingPage.tsx",
-    "frontend/src/pages/Services.tsx",
+    "frontend/src/pages/WorkOrders.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -1,12 +1,11 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { WorkOrderStatus, PaymentStatus, Speciality, WorkAvailability, RepairServiceType } from '../backend';
 import type { WorkOrder } from '../backend';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-// ─── Priority helpers ─────────────────────────────────────────────────────────
 
 export function getPriorityLabel(priority: number | bigint): string {
   const p = Number(priority);
@@ -19,80 +18,83 @@ export function getPriorityLabel(priority: number | bigint): string {
 
 export function getPriorityClass(priority: number | bigint): string {
   const p = Number(priority);
-  if (p === 1) return 'priority-low';
-  if (p === 2) return 'priority-medium';
-  if (p === 3) return 'priority-high';
-  if (p === 4) return 'priority-urgent';
+  if (p === 1) return 'badge-low';
+  if (p === 2) return 'badge-medium';
+  if (p === 3) return 'badge-high';
+  if (p === 4) return 'badge-urgent';
   return '';
 }
 
-// ─── Status helpers ───────────────────────────────────────────────────────────
-
-export function getStatusLabel(status: string): string {
+export function getStatusLabel(status: WorkOrderStatus): string {
   switch (status) {
-    case 'open': return 'Open';
-    case 'inProgress': return 'In Progress';
-    case 'completed': return 'Completed';
-    case 'cancelled': return 'Cancelled';
-    default: return status;
+    case WorkOrderStatus.open: return 'Open';
+    case WorkOrderStatus.inProgress: return 'In Progress';
+    case WorkOrderStatus.completed: return 'Completed';
+    case WorkOrderStatus.cancelled: return 'Cancelled';
+    default: return 'Unknown';
   }
 }
 
-export function getStatusClass(status: string): string {
+export function getStatusClass(status: WorkOrderStatus): string {
   switch (status) {
-    case 'open': return 'status-open';
-    case 'inProgress': return 'status-in-progress';
-    case 'completed': return 'status-completed';
-    case 'cancelled': return 'status-cancelled';
+    case WorkOrderStatus.open: return 'badge-open';
+    case WorkOrderStatus.inProgress: return 'badge-in-progress';
+    case WorkOrderStatus.completed: return 'badge-completed';
+    case WorkOrderStatus.cancelled: return 'badge-cancelled';
     default: return '';
   }
 }
 
-// ─── Payment Status helpers ───────────────────────────────────────────────────
-
-export function getPaymentStatusLabel(status: string): string {
+export function getPaymentStatusLabel(status: PaymentStatus): string {
   switch (status) {
-    case 'paid': return 'Paid';
-    case 'pending': return 'Pending';
-    case 'overdue': return 'Overdue';
-    case 'cancelled': return 'Cancelled';
-    default: return status;
+    case PaymentStatus.pending: return 'Pending';
+    case PaymentStatus.paid: return 'Paid';
+    default: return 'Unknown';
   }
 }
 
-export function getPaymentStatusClass(status: string): string {
+export function getPaymentStatusClass(status: PaymentStatus): string {
   switch (status) {
-    case 'paid': return 'payment-status-paid';
-    case 'pending': return 'payment-status-pending';
-    case 'overdue': return 'payment-status-overdue';
-    case 'cancelled': return 'payment-status-cancelled';
+    case PaymentStatus.pending: return 'badge-pending';
+    case PaymentStatus.paid: return 'badge-paid';
     default: return '';
   }
 }
 
-// ─── Speciality helpers ───────────────────────────────────────────────────────
-
-export function getSpecialityLabel(speciality: string): string {
+export function getSpecialityLabel(speciality: Speciality): string {
   switch (speciality) {
-    case 'residential': return 'Residential';
-    case 'commercial': return 'Commercial';
-    case 'industrial': return 'Industrial';
-    default: return speciality;
+    case Speciality.residential: return 'Residential';
+    case Speciality.commercial: return 'Commercial';
+    case Speciality.industrial: return 'Industrial';
+    default: return 'Unknown';
   }
 }
 
-// ─── Timestamp helpers ────────────────────────────────────────────────────────
+export function getRepairServiceTypeLabel(type: RepairServiceType): string {
+  switch (type) {
+    case RepairServiceType.electronicRepair: return 'Electronic Repair';
+    case RepairServiceType.acTechnician: return 'AC Technician';
+    case RepairServiceType.fridgeRepairWork: return 'Fridge Repair Work';
+    default: return 'Unknown';
+  }
+}
+
+export function getWorkAvailabilityLabel(availability: WorkAvailability): string {
+  switch (availability) {
+    case WorkAvailability.partTime: return 'Part-time';
+    case WorkAvailability.fullTime: return 'Full-time';
+    default: return 'Unknown';
+  }
+}
 
 export function formatTimestamp(timestamp: bigint): string {
   const ms = Number(timestamp) / 1_000_000;
-  return new Date(ms).toLocaleDateString('en-IN', {
+  return new Date(ms).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
 }
-
-// ─── Rating helpers ───────────────────────────────────────────────────────────
 
 export function calculateAverageRating(ratings: number[]): number {
   if (ratings.length === 0) return 0;
@@ -100,34 +102,19 @@ export function calculateAverageRating(ratings: number[]): number {
   return sum / ratings.length;
 }
 
-export function formatRatingText(average: number, count: number): string {
-  if (count === 0) return 'No ratings';
-  return `${average.toFixed(1)} (${count} review${count !== 1 ? 's' : ''})`;
+export function formatRatingText(rating: number): string {
+  return rating.toFixed(1);
 }
 
 export function validateRating(rating: number): boolean {
-  return Number.isInteger(rating) && rating >= 1 && rating <= 5;
+  return rating >= 1 && rating <= 5;
 }
 
-/**
- * Calculate average rating and count for a specific electrician
- * from completed work orders that have a workerRating.
- */
-export function calculateElectricianRating(
-  electricianId: bigint,
-  workOrders: WorkOrder[],
-): { averageRating: number; ratingCount: number } {
+export function calculateElectricianRating(workOrders: WorkOrder[], electricianId: bigint): { averageRating: number; ratingCount: number } {
   const relevant = workOrders.filter(
-    (wo) =>
-      wo.issuedElectrician === electricianId &&
-      wo.status === 'completed' &&
-      wo.workerRating != null,
+    (wo) => wo.issuedElectrician === electricianId && wo.workerRating != null
   );
-
-  if (relevant.length === 0) {
-    return { averageRating: 0, ratingCount: 0 };
-  }
-
+  if (relevant.length === 0) return { averageRating: 0, ratingCount: 0 };
   const sum = relevant.reduce((acc, wo) => acc + Number(wo.workerRating!.rating), 0);
   return {
     averageRating: sum / relevant.length,

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createRouter, createRoute, createRootRoute, RouterProvider } from '@tanstack/react-router';
-import { Layout } from './components/Layout';
+import Layout from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoadingFallback } from './components/LoadingFallback';
 
@@ -12,6 +12,7 @@ const Electricians = lazy(() => import('./pages/Electricians'));
 const Services = lazy(() => import('./pages/Services'));
 const JobBoard = lazy(() => import('./pages/JobBoard'));
 const Payments = lazy(() => import('./pages/Payments'));
+const MyBookings = lazy(() => import('./pages/MyBookings'));
 
 // Suspense wrapper helper
 function Lazy({ component: Component }: { component: React.ComponentType }) {
@@ -72,6 +73,12 @@ const jobsRoute = createRoute({
   component: () => <Lazy component={JobBoard} />,
 });
 
+const myBookingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/my-bookings',
+  component: () => <Lazy component={MyBookings} />,
+});
+
 // Landing page — portal entry point
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -89,6 +96,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   servicesRoute,
   jobsRoute,
+  myBookingsRoute,
 ]);
 
 const router = createRouter({ routeTree });

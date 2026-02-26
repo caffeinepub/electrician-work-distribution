@@ -1,124 +1,174 @@
 import { Link } from '@tanstack/react-router';
-import { Zap, Heart } from 'lucide-react';
+import { Zap, Shield, Clock, Star, Wrench, Wind, Fan } from 'lucide-react';
 
 export default function LandingPage() {
   const appId = encodeURIComponent(window.location.hostname || 'technical-tech');
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded bg-primary">
-            <Zap className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="font-bold text-foreground text-lg leading-tight tracking-wide">
-              Technical Tech
-            </h1>
-            <p className="text-xs text-muted-foreground">Home Appliance Repair Services</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Banner */}
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <img
-          src="/assets/generated/hero-banner.dim_1200x400.png"
-          alt="Technical Tech Hero"
-          className="w-full object-cover max-h-64 md:max-h-80"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/40 to-transparent flex items-center">
-          <div className="px-8 md:px-16">
-            <h2 className="text-2xl md:text-4xl font-extrabold text-foreground leading-tight animate-fade-in">
-              Expert Repair Services
-            </h2>
-            <p className="text-sm md:text-base text-muted-foreground mt-2 max-w-md animate-fade-in">
-              TV, AC, Fridge, Ceiling Fan & Table Fan — fast, reliable, and affordable.
+        <div className="absolute inset-0">
+          <img
+            src="/assets/generated/hero-banner.dim_1200x400.png"
+            alt="Hero Banner"
+            className="w-full h-full object-cover opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
+        </div>
+        <div className="relative container mx-auto px-6 py-24">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="text-primary w-6 h-6" />
+              <span className="text-primary font-semibold text-sm uppercase tracking-widest">Technical Tech</span>
+            </div>
+            <h1 className="text-5xl font-bold leading-tight mb-6">
+              Expert Electrical Services at Your Fingertips
+            </h1>
+            <p className="text-xl text-muted-foreground mb-8">
+              Connect with qualified electricians for all your electrical needs. Fast, reliable, and professional service.
             </p>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                to="/services"
+                className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-primary-foreground font-semibold rounded-sm hover:bg-primary/90 transition-colors"
+              >
+                <Wrench className="w-5 h-5" />
+                Request Service
+              </Link>
+              <Link
+                to="/jobs"
+                className="inline-flex items-center gap-2 px-8 py-3 border border-border text-foreground font-semibold rounded-sm hover:bg-accent transition-colors"
+              >
+                Apply as Worker
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Main Navigation Cards */}
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-10">
-        <p className="text-center text-muted-foreground text-sm mb-8 uppercase tracking-widest font-medium">
-          What would you like to do?
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-          {/* Request a Service Card */}
-          <Link
-            to="/services"
-            className="group block rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg transition-all duration-300 overflow-hidden animate-slide-up"
-          >
-            <div className="aspect-square overflow-hidden bg-muted">
-              <img
-                src="/assets/generated/tv-services-icon.dim_256x256.png"
-                alt="Request a Service"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-            <div className="p-5">
-              <h3 className="font-bold text-foreground text-lg mb-1 group-hover:text-primary transition-colors">
-                Request a Service
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Book a repair for your TV, AC, fridge, or fan — quick and easy.
-              </p>
-            </div>
-          </Link>
-
-          {/* Worker Job Apply Card */}
-          <Link
-            to="/jobs"
-            className="group block rounded-2xl border border-border bg-card hover:border-primary hover:shadow-lg transition-all duration-300 overflow-hidden animate-slide-up"
-            style={{ animationDelay: '0.1s' }}
-          >
-            <div className="aspect-square overflow-hidden bg-muted">
-              <img
-                src="/assets/generated/worker-apply-icon.dim_256x256.png"
-                alt="Worker Job Apply"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-            <div className="p-5">
-              <h3 className="font-bold text-foreground text-lg mb-1 group-hover:text-primary transition-colors">
-                Worker Job Apply
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Join our team of skilled technicians and grow your career.
-              </p>
-            </div>
-          </Link>
+      {/* Feature Pills */}
+      <section className="py-8 border-y border-border bg-card/50">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-wrap justify-center gap-3">
+            {[
+              { icon: <Wrench className="w-4 h-4" />, label: 'Electronic Repair' },
+              { icon: <Wind className="w-4 h-4" />, label: 'AC Technician' },
+              { icon: <Wrench className="w-4 h-4" />, label: 'Fridge Repair' },
+              { icon: <Fan className="w-4 h-4" />, label: 'Ceiling Fan' },
+              { icon: <Fan className="w-4 h-4" />, label: 'Table Fan' },
+            ].map((pill) => (
+              <span
+                key={pill.label}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-full text-sm font-medium text-muted-foreground"
+              >
+                {pill.icon}
+                {pill.label}
+              </span>
+            ))}
+          </div>
         </div>
+      </section>
 
-        {/* Feature Pills */}
-        <div className="flex flex-wrap justify-center gap-3 mt-10">
-          {['Television Repair', 'AC Repair', 'Fridge Repair', 'Ceiling Fan Repair', 'Table Fan Repair'].map((feat) => (
-            <span
-              key={feat}
-              className="px-4 py-1.5 rounded-full border border-border bg-card text-xs font-medium text-muted-foreground"
+      {/* Navigation Cards */}
+      <section className="py-16">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-bold text-center mb-12">Our Services</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Request a Service Card */}
+            <Link
+              to="/services"
+              className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
             >
-              {feat}
-            </span>
-          ))}
+              <div className="aspect-video overflow-hidden">
+                <img
+                  src="/assets/generated/tv-services-icon.dim_256x256.png"
+                  alt="Request a Service"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <div className="p-6">
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  Request a Service
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  Book a qualified technician for TV, AC, fridge, fan repairs and more.
+                </p>
+              </div>
+            </Link>
+
+            {/* Worker Job Apply Card */}
+            <Link
+              to="/jobs"
+              className="group relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
+            >
+              <div className="aspect-video overflow-hidden">
+                <img
+                  src="/assets/generated/worker-apply-icon.dim_256x256.png"
+                  alt="Worker Job Apply"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <div className="p-6">
+                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                  Worker Job Apply
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  Join our network of skilled technicians and find work opportunities.
+                </p>
+              </div>
+            </Link>
+          </div>
         </div>
-      </main>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 bg-card/30">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <Shield className="w-8 h-8 text-primary" />,
+                title: 'Verified Professionals',
+                desc: 'All our technicians are background-checked and certified.',
+              },
+              {
+                icon: <Clock className="w-8 h-8 text-primary" />,
+                title: 'Fast Response',
+                desc: 'Get a technician at your door within hours of booking.',
+              },
+              {
+                icon: <Star className="w-8 h-8 text-primary" />,
+                title: 'Rated & Reviewed',
+                desc: 'Read real reviews from customers before you book.',
+              },
+            ].map((feature) => (
+              <div key={feature.title} className="text-center p-6">
+                <div className="flex justify-center mb-4">{feature.icon}</div>
+                <h3 className="text-lg font-bold mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground text-sm">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card/60 py-5 px-4 text-center">
-        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-          Built with <Heart className="w-3 h-3 text-primary fill-primary" /> using{' '}
-          <a
-            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${appId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-foreground transition-colors"
-          >
-            caffeine.ai
-          </a>
-        </p>
+      <footer className="py-8 border-t border-border">
+        <div className="container mx-auto px-6 text-center text-sm text-muted-foreground">
+          <p>
+            © {new Date().getFullYear()} Technical Tech. Built with{' '}
+            <span className="text-red-500">♥</span> using{' '}
+            <a
+              href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${appId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              caffeine.ai
+            </a>
+          </p>
+        </div>
       </footer>
     </div>
   );

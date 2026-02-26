@@ -10,11 +10,17 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type ApplicationProcessStatus = { 'cancelled' : null } |
+  { 'pending' : null } |
+  { 'verifiedPendingAssignment' : null } |
+  { 'accepted' : null } |
+  { 'declined' : null };
 export interface Electrician {
   'id' : bigint,
   'paymentMethod' : string,
   'name' : string,
   'hourlyRate' : bigint,
+  'workAvailability' : WorkAvailability,
   'isAvailable' : boolean,
   'specialist' : Speciality,
   'email' : string,
@@ -23,12 +29,12 @@ export interface Electrician {
 }
 export type PaymentStatus = { 'pending' : null } |
   { 'paid' : null };
+export interface PublicJobAlertSubscription { 'subscribedAt' : Time }
 export interface Rating { 'comment' : string, 'rating' : bigint }
-export type RepairServiceType = { 'ac' : null } |
-  { 'ceilingFan' : null } |
-  { 'tableFan' : null } |
-  { 'fridge' : null } |
-  { 'television' : null };
+export type RepairServiceType = { 'electronicRepair' : null } |
+  { 'electrician' : null } |
+  { 'fridgeRepairWork' : null } |
+  { 'acTechnician' : null };
 export type Speciality = { 'commercial' : null } |
   { 'residential' : null } |
   { 'industrial' : null };
@@ -37,6 +43,8 @@ export interface UserProfile { 'name' : string, 'email' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export type WorkAvailability = { 'partTime' : null } |
+  { 'fullTime' : null };
 export interface WorkOrder {
   'id' : bigint,
   'status' : WorkOrderStatus,
@@ -48,12 +56,18 @@ export interface WorkOrder {
   'customerRating' : [] | [Rating],
   'preferredEducation' : string,
   'description' : string,
+  'applicationStatus' : ApplicationProcessStatus,
   'customerAddress' : string,
   'issuedElectrician' : bigint,
   'priority' : bigint,
   'customerEmail' : string,
   'paymentAmount' : bigint,
   'location' : string,
+}
+export interface WorkOrderApplication {
+  'applicant' : Principal,
+  'appliedAt' : Time,
+  'workOrderId' : bigint,
 }
 export type WorkOrderStatus = { 'cancelled' : null } |
   { 'open' : null } |
@@ -87,10 +101,21 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'acceptWorkOrder' : ActorMethod<[bigint], undefined>,
   'addElectrician' : ActorMethod<
-    [string, Speciality, string, string, bigint, string, string],
+    [
+      string,
+      Speciality,
+      WorkAvailability,
+      string,
+      string,
+      bigint,
+      string,
+      string,
+    ],
     bigint
   >,
+  'applyForWorkOrder' : ActorMethod<[bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignElectricianToWorkOrder' : ActorMethod<[bigint, bigint], undefined>,
   'createWorkOrder' : ActorMethod<
@@ -108,26 +133,47 @@ export interface _SERVICE {
     ],
     bigint
   >,
+  'declineWorkOrder' : ActorMethod<[bigint], undefined>,
   'findElectricianById' : ActorMethod<[bigint], Electrician>,
   'findWorkOrderById' : ActorMethod<[bigint], WorkOrder>,
   'getAllElectricians' : ActorMethod<[], Array<Electrician>>,
+  'getAllJobAlertSubscriptions' : ActorMethod<
+    [],
+    Array<PublicJobAlertSubscription>
+  >,
   'getAllWorkOrders' : ActorMethod<[], Array<WorkOrder>>,
   'getAvailableServices' : ActorMethod<[], Array<RepairServiceType>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCurrentUserWorkOrders' : ActorMethod<[], Array<WorkOrder>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getWorkOrderApplication' : ActorMethod<
+    [bigint],
+    [] | [WorkOrderApplication]
+  >,
+  'getWorkOrdersByApplicationStatus' : ActorMethod<
+    [ApplicationProcessStatus],
+    Array<WorkOrder>
+  >,
   'getWorkOrdersByElectrician' : ActorMethod<[bigint], Array<WorkOrder>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isSubscribedToJobAlerts' : ActorMethod<[], boolean>,
   'removeElectrician' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'submitCustomerRating' : ActorMethod<[bigint, bigint, string], undefined>,
   'submitWorkerRating' : ActorMethod<[bigint, bigint, string], undefined>,
+  'subscribeToJobAlerts' : ActorMethod<[], undefined>,
+  'updateApplicationStatusForWorkOrder' : ActorMethod<
+    [bigint, ApplicationProcessStatus],
+    undefined
+  >,
   'updateElectrician' : ActorMethod<
     [
       bigint,
       [] | [string],
       [] | [Speciality],
       [] | [boolean],
+      [] | [WorkAvailability],
       [] | [string],
       [] | [string],
       [] | [bigint],
@@ -141,6 +187,7 @@ export interface _SERVICE {
     undefined
   >,
   'updateWorkOrderStatus' : ActorMethod<[bigint, WorkOrderStatus], undefined>,
+  'verifyWorkOrderApplication' : ActorMethod<[bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

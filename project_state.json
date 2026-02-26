@@ -1,32 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "A service/worker job platform with a 'Request a Service' section offering television repair, AC repair, fridge repair, ceiling fan and table fan repair. The worker job apply page includes a preferred education field with options: Electronic Commerce Engineering, AC Mechanic, and other work-related education suggestions.",
+  "summary": "A job marketplace/worker app where workers can apply for jobs. Adding a simplified job application flow, and a 'no available jobs' state that encourages workers to join and sign up for job alerts when no jobs are currently available.",
   "architectural_notes": [],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-replace-the-current-television-services-navigation-option-in-the-sidebar-landing-page-card-and-any-related-routing-with-request-a-service-the-page-title-and-all-references-should-read-request-a-service-throughout-the-app",
-      "title": "Replace the current 'Television Services' navigation option (in the sidebar, landing page card, and any related routing) with 'Request a Service'. The page title and all references should read 'Request a Service' throughout the app.",
+      "id": "feature-simplify-the-job-application-process-on-the-job-board-page-so-workers-can-apply-to-a-job-with-minimal-steps-reduce-the-multi-step-application-dialog-to-a-single-click-or-single-step-confirmation-e-g-one-apply-now-button-with-a-brief-confirmation-prompt-removing-unnecessary-intermediate-steps-while-still-recording-the-application-in-the-backend",
+      "title": "Simplify the job application process on the Job Board page so workers can apply to a job with minimal steps — reduce the multi-step application dialog to a single-click or single-step confirmation (e.g., one 'Apply Now' button with a brief confirmation prompt), removing unnecessary intermediate steps while still recording the application in the backend.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-the-service-work-order-categories-on-the-request-a-service-page-to-include-exactly-these-repair-service-types-television-repair-ac-repair-fridge-repair-ceiling-fan-repair-and-table-fan-repair-these-should-be-the-selectable-work-detail-service-type-options-available-when-a-customer-submits-a-service-request",
-      "title": "Update the service/work order categories on the 'Request a Service' page to include exactly these repair service types: Television Repair, AC Repair, Fridge Repair, Ceiling Fan Repair, and Table Fan Repair. These should be the selectable work detail/service type options available when a customer submits a service request.",
+      "id": "feature-when-there-are-no-available-open-jobs-on-the-job-board-empty-state-display-a-prominent-join-us-panel-that-encourages-workers-to-sign-up-for-job-alerts-the-panel-should-include-a-friendly-message-such-as-no-jobs-available-right-now-join-our-worker-network-and-we-ll-alert-you-when-new-jobs-are-posted-a-join-us-call-to-action-button-and-a-secondary-note-reassuring-workers-that-they-ll-be-notified-when-jobs-become-available",
+      "title": "When there are no available/open jobs on the Job Board (empty state), display a prominent 'Join Us' panel that encourages workers to sign up for job alerts. The panel should include a friendly message such as 'No jobs available right now — Join our worker network and we'll alert you when new jobs are posted!', a 'Join Us' call-to-action button, and a secondary note reassuring workers that they'll be notified when jobs become available.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-the-following-preferred-education-options-to-the-worker-job-apply-multi-step-form-s-preferred-education-field-electronic-commerce-engineering-ac-mechanic-electrical-engineering-iti-electrician-trade-diploma-in-refrigeration-air-conditioning-and-diploma-in-electronics-communication-these-should-appear-as-selectable-options-alongside-any-existing-education-options",
-      "title": "Add the following preferred education options to the worker Job Apply multi-step form's 'Preferred Education' field: Electronic Commerce Engineering, AC Mechanic, Electrical Engineering, ITI (Electrician Trade), Diploma in Refrigeration & Air Conditioning, and Diploma in Electronics & Communication. These should appear as selectable options alongside any existing education options.",
+      "id": "feature-wire-the-join-us-button-on-the-job-board-empty-state-panel-to-call-the-backend-job-alert-subscription-function-after-a-successful-subscription-display-a-success-message-such-as-you-re-on-the-list-we-ll-alert-you-when-new-jobs-are-posted-and-disable-or-update-the-button-to-prevent-duplicate-submissions",
+      "title": "Wire the 'Join Us' button on the Job Board empty-state panel to call the backend job alert subscription function. After a successful subscription, display a success message such as 'You're on the list! We'll alert you when new jobs are posted.' and disable or update the button to prevent duplicate submissions.",
       "reqIds": [
-        "REQ-3"
+        "REQ-4"
       ],
       "version": 1
     }
@@ -34,14 +34,22 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Replace TV service option with 'Request a Service' section; work details include television repair, AC repair, fridge repair, ceiling fan and table fan repair",
+      "summary": "Simplified/easy job application method for workers",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Add preferred education options to job apply page: Electronic Commerce Engineering, AC Mechanic, and other relevant work-related education suggestions",
+      "summary": "When no jobs are available, show a 'Join Us' prompt encouraging workers to sign up and receive job alerts/notifications",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Add a backend 'job alert subscription' capability: store a worker's interest/subscription intent when they click 'Join Us' on the empty-state panel. Record the worker's principal and a timestamp so that administrators can later view subscribed workers waiting for job alerts.",
+      "reqIds": [
+        "REQ-3"
+      ],
       "status": "pending"
     }
   ],

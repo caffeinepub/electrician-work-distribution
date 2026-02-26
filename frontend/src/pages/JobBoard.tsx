@@ -1,662 +1,497 @@
-import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import {
-  Briefcase,
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  GraduationCap,
-  CheckCircle,
-  Loader2,
-  Star,
-  Zap,
-  Heart,
-  ChevronRight,
-  ChevronLeft,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MapPin, Clock, DollarSign, Briefcase, ChevronRight, Loader2, Info, CheckCircle2, Bell, BellRing, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useGetElectricians, useGetWorkOrders, useCreateWorkOrder, useSubmitWorkerRating } from '@/hooks/useQueries';
-import { JobApplicationStepper } from '@/components/JobApplicationStepper';
-import { RatingInput } from '@/components/RatingInput';
-import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  useGetAllWorkOrders,
+  useApplyForWorkOrder,
+  useAcceptWorkOrder,
+  useDeclineWorkOrder,
+  useIsSubscribedToJobAlerts,
+  useSubscribeToJobAlerts,
+} from '@/hooks/useQueries';
+import { ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
+import { StatusBadge } from '@/components/StatusBadge';
+import { PriorityBadge } from '@/components/PriorityBadge';
+import { WorkOrder, ApplicationProcessStatus, WorkOrderStatus } from '@/backend';
 import { formatTimestamp } from '@/lib/utils';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 
-const SERVICE_TYPES = [
-  'Television Repair',
-  'AC Repair',
-  'Fridge Repair',
-  'Ceiling Fan Repair',
-  'Table Fan Repair',
-];
+// localStorage key for tracking applied job IDs per session
+const APPLIED_JOBS_KEY = 'appliedJobIds';
 
-const EDUCATION_OPTIONS = [
-  'Electronic Commerce Engineering',
-  'AC Mechanic',
-  'Electrical Engineering',
-  'ITI (Electrician Trade)',
-  'Diploma in Refrigeration & Air Conditioning',
-  'Diploma in Electronics & Communication',
-  'B.Tech / B.E. (Electronics)',
-  'B.Tech / B.E. (Electrical)',
-  'Polytechnic Diploma (Electrical)',
-  'Polytechnic Diploma (Electronics)',
-  'ITI (Wireman Trade)',
-  'High School / Secondary',
-  'Other',
-];
-
-const SPECIALITY_OPTIONS = [
-  { value: 'residential', label: 'Residential' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'industrial', label: 'Industrial' },
-];
-
-const STEP_LABELS = ['Your Info', 'Job Details', 'Confirm'];
-const TOTAL_STEPS = 3;
-
-interface ApplicantInfo {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  preferredEducation: string;
+function getAppliedJobIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(APPLIED_JOBS_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
 }
 
-interface JobSelection {
-  serviceType: string;
-  speciality: string;
-  experience: string;
-  coverNote: string;
+function addAppliedJobId(id: string) {
+  const ids = getAppliedJobIds();
+  ids.add(id);
+  localStorage.setItem(APPLIED_JOBS_KEY, JSON.stringify([...ids]));
 }
-
-const initialApplicant: ApplicantInfo = {
-  name: '',
-  email: '',
-  phone: '',
-  address: '',
-  preferredEducation: '',
-};
-
-const initialJobSelection: JobSelection = {
-  serviceType: '',
-  speciality: 'residential',
-  experience: '',
-  coverNote: '',
-};
 
 export default function JobBoard() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [applicant, setApplicant] = useState<ApplicantInfo>(initialApplicant);
-  const [jobSelection, setJobSelection] = useState<JobSelection>(initialJobSelection);
-  const [submitted, setSubmitted] = useState(false);
+  const { data: allWorkOrders = [], isLoading } = useGetAllWorkOrders();
+  const applyMutation = useApplyForWorkOrder();
+  const acceptMutation = useAcceptWorkOrder();
+  const declineMutation = useDeclineWorkOrder();
+  const { data: isSubscribed = false } = useIsSubscribedToJobAlerts();
+  const subscribeMutation = useSubscribeToJobAlerts();
+  const { identity, login, loginStatus } = useInternetIdentity();
+  const isAuthenticated = !!identity;
 
-  // Rating dialog state
-  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
-  const [ratingWorkOrderId, setRatingWorkOrderId] = useState<bigint | null>(null);
-  const [ratingValue, setRatingValue] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(getAppliedJobIds);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedJob, setSelectedJob] = useState<WorkOrder | null>(null);
+  const [applyDialogOpen, setApplyDialogOpen] = useState(false);
+  const [applySuccess, setApplySuccess] = useState(false);
+  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
 
-  const { data: electricians = [] } = useGetElectricians();
-  const { data: workOrders = [] } = useGetWorkOrders();
-  const createWorkOrder = useCreateWorkOrder();
-  const submitWorkerRating = useSubmitWorkerRating();
+  // Refresh applied IDs from localStorage on mount
+  useEffect(() => {
+    setAppliedIds(getAppliedJobIds());
+  }, []);
 
-  const appId = encodeURIComponent(window.location.hostname || 'technical-tech');
+  // Filter: only open jobs, not already applied by this worker
+  const availableJobs = allWorkOrders.filter((wo) => {
+    const idStr = String(wo.id);
+    if (appliedIds.has(idStr)) return false;
+    if (wo.status !== WorkOrderStatus.open) return false;
+    return true;
+  });
 
-  const openWorkOrders = workOrders.filter((wo) => wo.status === 'open');
-  const completedWorkOrders = workOrders.filter((wo) => wo.status === 'completed');
+  const filteredJobs = availableJobs.filter((wo) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      wo.title.toLowerCase().includes(q) ||
+      wo.description.toLowerCase().includes(q) ||
+      wo.location.toLowerCase().includes(q)
+    );
+  });
 
-  const handleApplicantChange = (field: keyof ApplicantInfo, value: string) => {
-    setApplicant((prev) => ({ ...prev, [field]: value }));
+  // Jobs this worker has applied to
+  const myAppliedJobs = allWorkOrders.filter((wo) => {
+    const idStr = String(wo.id);
+    return appliedIds.has(idStr);
+  });
+
+  const handleOpenApplyDialog = (job: WorkOrder) => {
+    setSelectedJob(job);
+    setApplySuccess(false);
+    setApplyDialogOpen(true);
   };
 
-  const handleJobChange = (field: keyof JobSelection, value: string) => {
-    setJobSelection((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleNext = () => {
-    if (currentStep === 1) {
-      if (!applicant.name || !applicant.email) {
-        toast.error('Please fill in your name and email.');
-        return;
-      }
+  const handleApply = async () => {
+    if (!selectedJob) return;
+    try {
+      await applyMutation.mutateAsync(selectedJob.id);
+      const idStr = String(selectedJob.id);
+      addAppliedJobId(idStr);
+      setAppliedIds(getAppliedJobIds());
+      setApplySuccess(true);
+    } catch (err: unknown) {
+      console.error('Apply failed:', err);
     }
-    if (currentStep === 2) {
-      if (!jobSelection.serviceType) {
-        toast.error('Please select a service type.');
-        return;
-      }
-    }
-    setCurrentStep((s) => Math.min(s + 1, TOTAL_STEPS));
   };
 
-  const handleBack = () => setCurrentStep((s) => Math.max(s - 1, 1));
+  const handleAccept = async (workOrderId: bigint) => {
+    try {
+      await acceptMutation.mutateAsync(workOrderId);
+    } catch (err) {
+      console.error('Accept failed:', err);
+    }
+  };
 
-  const handleSubmit = async () => {
-    const availableElectrician = electricians.find((e) => e.isAvailable);
-    if (!availableElectrician) {
-      toast.error('No available positions at the moment. Please try again later.');
+  const handleDecline = async (workOrderId: bigint) => {
+    try {
+      await declineMutation.mutateAsync(workOrderId);
+    } catch (err) {
+      console.error('Decline failed:', err);
+    }
+  };
+
+  const handleJoinUs = async () => {
+    if (!isAuthenticated) {
+      setLoginPromptOpen(true);
       return;
     }
-
     try {
-      await createWorkOrder.mutateAsync({
-        title: `Job Application: ${jobSelection.serviceType}`,
-        description: jobSelection.coverNote || `Application for ${jobSelection.serviceType} technician role.`,
-        location: applicant.address,
-        priority: BigInt(1),
-        issuedElectrician: availableElectrician.id,
-        customerEmail: applicant.email,
-        customerAddress: applicant.address,
-        paymentAmount: BigInt(0),
-        paymentMethod: 'Cash',
-        preferredEducation: applicant.preferredEducation,
-      });
-      setSubmitted(true);
-      toast.success('Application submitted successfully!');
+      await subscribeMutation.mutateAsync();
+      setSubscribeSuccess(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit application.';
-      toast.error(msg);
+      console.error('Subscribe failed:', err);
     }
   };
 
-  const openRatingDialog = (workOrderId: bigint) => {
-    setRatingWorkOrderId(workOrderId);
-    setRatingValue(0);
-    setRatingComment('');
-    setRatingDialogOpen(true);
+  const priorityLabel = (p: bigint) => {
+    const n = Number(p);
+    if (n === 1) return 'Low';
+    if (n === 2) return 'Medium';
+    if (n === 3) return 'High';
+    return 'Urgent';
   };
 
-  const handleSubmitRating = async () => {
-    if (!ratingWorkOrderId || ratingValue < 1) {
-      toast.error('Please select a rating (1–5 stars).');
-      return;
-    }
-    try {
-      await submitWorkerRating.mutateAsync({
-        workOrderId: ratingWorkOrderId,
-        rating: BigInt(ratingValue),
-        comment: ratingComment,
-      });
-      toast.success('Rating submitted!');
-      setRatingDialogOpen(false);
-      setRatingWorkOrderId(null);
-      setRatingValue(0);
-      setRatingComment('');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to submit rating.';
-      toast.error(msg);
-    }
-  };
-
-  const resetForm = () => {
-    setCurrentStep(1);
-    setApplicant(initialApplicant);
-    setJobSelection(initialJobSelection);
-    setSubmitted(false);
-  };
+  const alreadySubscribed = isSubscribed || subscribeSuccess;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="flex items-center justify-center w-8 h-8 rounded bg-primary">
-              <Zap className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-foreground text-sm tracking-wide uppercase">
-              Technical Tech
-            </span>
-          </Link>
-          <Link to="/services">
-            <Button variant="outline" size="sm">Request a Service</Button>
-          </Link>
-        </div>
-      </header>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Job Board</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Browse available jobs and apply. First to apply gets assigned after admin verification.
+        </p>
+      </div>
 
-      {/* Hero */}
-      <section className="bg-card border-b border-border py-10 px-4 text-center">
-        <div className="max-w-2xl mx-auto">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-4">
-            <Briefcase className="w-7 h-7 text-primary" />
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-foreground mb-3">
-            Worker Job Apply
-          </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Join our team of skilled technicians. Apply for open positions and grow your career.
-          </p>
-        </div>
-      </section>
+      {/* Info Banner */}
+      <Alert className="border-primary/30 bg-primary/5">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-sm text-foreground">
+          <strong>How it works:</strong> Apply for a job → Admin verifies your application → Admin confirms assignment → Job is yours!
+        </AlertDescription>
+      </Alert>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-8 space-y-10">
-        {/* Application Form */}
-        <div className="max-w-2xl mx-auto">
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-primary" />
-                Job Application
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {submitted ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold text-foreground mb-2">Application Submitted!</h3>
-                  <p className="text-muted-foreground text-sm mb-6">
-                    Thank you for applying. Our team will review your application and get back to you.
-                  </p>
-                  <Button onClick={resetForm} variant="outline">
-                    Submit Another Application
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <JobApplicationStepper
-                    currentStep={currentStep}
-                    totalSteps={TOTAL_STEPS}
-                    stepLabels={STEP_LABELS}
-                  />
-
-                  {/* Step 1: Applicant Info */}
-                  {currentStep === 1 && (
-                    <div className="space-y-4 animate-fade-in">
-                      <h3 className="font-semibold text-foreground flex items-center gap-2">
-                        <User className="w-4 h-4 text-primary" /> Personal Information
-                      </h3>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="name">
-                          Full Name <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="name"
-                          placeholder="Your full name"
-                          value={applicant.name}
-                          onChange={(e) => handleApplicantChange('name', e.target.value)}
-                        />
+      {/* My Applied Jobs */}
+      {myAppliedJobs.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-foreground mb-3">My Applications</h2>
+          <div className="space-y-3">
+            {myAppliedJobs.map((job) => (
+              <Card key={String(job.id)} className="bg-card border-border">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-foreground text-sm">{job.title}</h3>
+                        <ApplicationStatusBadge status={job.applicationStatus} />
+                        <StatusBadge status={job.status} />
                       </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="email">
-                          <Mail className="w-3.5 h-3.5 inline mr-1" />
-                          Email <span className="text-destructive">*</span>
-                        </Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={applicant.email}
-                          onChange={(e) => handleApplicantChange('email', e.target.value)}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="phone">
-                          <Phone className="w-3.5 h-3.5 inline mr-1" />
-                          Phone Number
-                        </Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="+91 XXXXX XXXXX"
-                          value={applicant.phone}
-                          onChange={(e) => handleApplicantChange('phone', e.target.value)}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="address">
-                          <MapPin className="w-3.5 h-3.5 inline mr-1" />
-                          Address
-                        </Label>
-                        <Textarea
-                          id="address"
-                          placeholder="Your full address"
-                          value={applicant.address}
-                          onChange={(e) => handleApplicantChange('address', e.target.value)}
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label>
-                          <GraduationCap className="w-3.5 h-3.5 inline mr-1" />
-                          Preferred Education / Qualification
-                        </Label>
-                        <Select
-                          value={applicant.preferredEducation}
-                          onValueChange={(v) => handleApplicantChange('preferredEducation', v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your qualification" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {EDUCATION_OPTIONS.map((edu) => (
-                              <SelectItem key={edu} value={edu}>
-                                {edu}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex justify-end pt-2">
-                        <Button onClick={handleNext}>
-                          Next <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{job.description}</p>
+                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />{job.location}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{formatTimestamp(job.createdAt)}
+                        </span>
                       </div>
                     </div>
-                  )}
-
-                  {/* Step 2: Job Selection */}
-                  {currentStep === 2 && (
-                    <div className="space-y-4 animate-fade-in">
-                      <h3 className="font-semibold text-foreground flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-primary" /> Job Details
-                      </h3>
-
-                      <div className="space-y-1.5">
-                        <Label>
-                          Service Type <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                          value={jobSelection.serviceType}
-                          onValueChange={(v) => handleJobChange('serviceType', v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select service type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SERVICE_TYPES.map((svc) => (
-                              <SelectItem key={svc} value={svc}>
-                                {svc}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label>Speciality Area</Label>
-                        <Select
-                          value={jobSelection.speciality}
-                          onValueChange={(v) => handleJobChange('speciality', v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SPECIALITY_OPTIONS.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>
-                                {s.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="experience">Years of Experience</Label>
-                        <Input
-                          id="experience"
-                          type="number"
-                          min="0"
-                          placeholder="e.g. 3"
-                          value={jobSelection.experience}
-                          onChange={(e) => handleJobChange('experience', e.target.value)}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor="coverNote">Cover Note</Label>
-                        <Textarea
-                          id="coverNote"
-                          placeholder="Tell us about your skills and why you want to join..."
-                          value={jobSelection.coverNote}
-                          onChange={(e) => handleJobChange('coverNote', e.target.value)}
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="flex justify-between pt-2">
-                        <Button variant="outline" onClick={handleBack}>
-                          <ChevronLeft className="w-4 h-4 mr-1" /> Back
-                        </Button>
-                        <Button onClick={handleNext}>
-                          Next <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Step 3: Confirmation */}
-                  {currentStep === 3 && (
-                    <div className="space-y-4 animate-fade-in">
-                      <h3 className="font-semibold text-foreground flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-primary" /> Review & Submit
-                      </h3>
-
-                      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Name</span>
-                          <span className="font-medium text-foreground">{applicant.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Email</span>
-                          <span className="font-medium text-foreground">{applicant.email}</span>
-                        </div>
-                        {applicant.phone && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Phone</span>
-                            <span className="font-medium text-foreground">{applicant.phone}</span>
-                          </div>
-                        )}
-                        {applicant.preferredEducation && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Education</span>
-                            <span className="font-medium text-foreground">{applicant.preferredEducation}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Service Type</span>
-                          <span className="font-medium text-foreground">{jobSelection.serviceType}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Speciality</span>
-                          <span className="font-medium text-foreground capitalize">{jobSelection.speciality}</span>
-                        </div>
-                        {jobSelection.experience && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Experience</span>
-                            <span className="font-medium text-foreground">{jobSelection.experience} years</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex justify-between pt-2">
-                        <Button variant="outline" onClick={handleBack}>
-                          <ChevronLeft className="w-4 h-4 mr-1" /> Back
-                        </Button>
-                        <Button onClick={handleSubmit} disabled={createWorkOrder.isPending}>
-                          {createWorkOrder.isPending ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Submitting...
-                            </>
-                          ) : (
-                            'Submit Application'
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Open Work Orders */}
-        {openWorkOrders.length > 0 && (
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" />
-              Open Positions
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {openWorkOrders.map((wo) => {
-                const elec = electricians.find((e) => e.id === wo.issuedElectrician);
-                return (
-                  <Card key={String(wo.id)} className="border-border hover:border-primary/50 transition-colors">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-foreground text-sm leading-tight">{wo.title}</h3>
-                        <Badge variant="outline" className="text-xs shrink-0">Open</Badge>
-                      </div>
-                      {wo.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{wo.description}</p>
-                      )}
-                      {elec && (
-                        <p className="text-xs text-muted-foreground">
-                          Technician: <span className="text-foreground font-medium">{elec.name}</span>
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {formatTimestamp(wo.createdAt)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Completed Work Orders */}
-        {completedWorkOrders.length > 0 && (
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              Completed Jobs
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {completedWorkOrders.map((wo) => {
-                const elec = electricians.find((e) => e.id === wo.issuedElectrician);
-                return (
-                  <Card key={String(wo.id)} className="border-border">
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-foreground text-sm leading-tight">{wo.title}</h3>
-                        <Badge variant="secondary" className="text-xs shrink-0">Done</Badge>
-                      </div>
-                      {elec && (
-                        <p className="text-xs text-muted-foreground">
-                          Technician: <span className="text-foreground font-medium">{elec.name}</span>
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {formatTimestamp(wo.createdAt)}
-                      </p>
-                      {!wo.workerRating && (
+                    {/* Admin actions for verified-pending-assignment jobs */}
+                    {job.applicationStatus === ApplicationProcessStatus.verifiedPendingAssignment && (
+                      <div className="flex gap-2 flex-shrink-0">
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="w-full text-xs"
-                          onClick={() => openRatingDialog(wo.id)}
+                          variant="default"
+                          onClick={() => handleAccept(job.id)}
+                          disabled={acceptMutation.isPending}
                         >
-                          <Star className="w-3 h-3 mr-1" /> Rate Technician
+                          {acceptMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Accept'}
                         </Button>
-                      )}
-                      {wo.workerRating && (
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                          <span className="text-xs text-muted-foreground">
-                            Rated {String(wo.workerRating.rating)}/5
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-        )}
-      </main>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDecline(job.id)}
+                          disabled={declineMutation.isPending}
+                        >
+                          {declineMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Decline'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* Rating Dialog */}
-      {ratingDialogOpen && ratingWorkOrderId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <Card className="w-full max-w-md border-border">
-            <CardHeader>
-              <CardTitle className="text-foreground flex items-center gap-2">
-                <Star className="w-5 h-5 text-amber-400" /> Rate Technician
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <RatingInput
-                value={ratingValue}
-                onChange={setRatingValue}
-                comment={ratingComment}
-                onCommentChange={setRatingComment}
-              />
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => {
-                    setRatingDialogOpen(false);
-                    setRatingWorkOrderId(null);
-                    setRatingValue(0);
-                    setRatingComment('');
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handleSubmitRating}
-                  disabled={submitWorkerRating.isPending || ratingValue < 1}
-                >
-                  {submitWorkerRating.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    'Submit Rating'
-                  )}
-                </Button>
+      {/* Search */}
+      <div className="flex items-center gap-3">
+        <Input
+          placeholder="Search jobs by title, description, or location..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-md"
+        />
+        <span className="text-sm text-muted-foreground whitespace-nowrap">
+          {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} available
+        </span>
+      </div>
+
+      {/* Job Listings */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : filteredJobs.length === 0 ? (
+        /* ── "Join Us" Empty State ── */
+        <div className="flex flex-col items-center justify-center py-12 px-4">
+          <div className="w-full max-w-lg bg-gradient-to-br from-primary/10 via-card to-primary/5 border border-primary/20 rounded-2xl p-8 text-center shadow-lg space-y-5">
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
+              <Users className="w-8 h-8 text-primary" />
+            </div>
+
+            {/* Headline */}
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-foreground">
+                {searchQuery ? 'No jobs match your search' : 'No Jobs Available Right Now'}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {searchQuery
+                  ? 'Try a different search term or clear the filter to see all jobs.'
+                  : 'New jobs are posted regularly. Join our worker network and be the first to know when a new job is available!'}
+              </p>
+            </div>
+
+            {/* Alert notification message */}
+            {!searchQuery && (
+              <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-4 py-3 text-sm text-foreground">
+                <BellRing className="w-4 h-4 text-primary flex-shrink-0" />
+                <span>
+                  <strong>Stay ahead!</strong> We'll alert you the moment a new job is posted.
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            )}
+
+            {/* CTA */}
+            {!searchQuery && (
+              alreadySubscribed ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                    <CheckCircle2 className="w-5 h-5" />
+                    <span>You're on the list!</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    We'll alert you when new jobs are posted. Stay tuned!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Button
+                    size="lg"
+                    className="w-full gap-2 font-semibold text-base"
+                    onClick={handleJoinUs}
+                    disabled={subscribeMutation.isPending}
+                  >
+                    {subscribeMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Joining...
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="w-4 h-4" />
+                        Join Us – Get Job Alerts
+                      </>
+                    )}
+                  </Button>
+                  {subscribeMutation.isError && (
+                    <p className="text-xs text-destructive">
+                      {String(subscribeMutation.error).includes('already subscribed')
+                        ? "You're already subscribed to job alerts!"
+                        : 'Something went wrong. Please try again.'}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Free to join. No spam. Unsubscribe anytime.
+                  </p>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredJobs.map((job) => (
+            <Card
+              key={String(job.id)}
+              className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer"
+              onClick={() => handleOpenApplyDialog(job)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-sm font-semibold text-foreground line-clamp-2">
+                    {job.title}
+                  </CardTitle>
+                  <PriorityBadge priority={Number(job.priority)} />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground line-clamp-2">{job.description}</p>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />{job.location}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />₹{(Number(job.paymentAmount) / 100).toFixed(0)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />{formatTimestamp(job.createdAt)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-2 flex-wrap">
+                    <StatusBadge status={job.status} />
+                    <Badge variant="outline" className="text-xs">{priorityLabel(job.priority)}</Badge>
+                  </div>
+                  <Button size="sm" variant="ghost" className="text-primary hover:text-primary gap-1">
+                    Apply <ChevronRight className="w-3 h-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-card/60 py-5 px-4 text-center mt-auto">
-        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-          Built with <Heart className="w-3 h-3 text-primary fill-primary" /> using{' '}
-          <a
-            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${appId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-foreground transition-colors"
-          >
-            caffeine.ai
-          </a>
-        </p>
-      </footer>
+      {/* ── Simple Apply Dialog ── */}
+      <Dialog open={applyDialogOpen} onOpenChange={(open) => {
+        setApplyDialogOpen(open);
+        if (!open) setApplySuccess(false);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {applySuccess ? 'Application Submitted!' : 'Apply for Job'}
+            </DialogTitle>
+            {selectedJob && !applySuccess && (
+              <DialogDescription>{selectedJob.title}</DialogDescription>
+            )}
+          </DialogHeader>
+
+          {!applySuccess && selectedJob && (
+            <div className="space-y-4">
+              {/* Job summary */}
+              <div className="bg-muted/30 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Location</span>
+                  <span className="text-foreground font-medium">{selectedJob.location}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Priority</span>
+                  <PriorityBadge priority={Number(selectedJob.priority)} />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Budget</span>
+                  <span className="text-foreground font-medium">₹{(Number(selectedJob.paymentAmount) / 100).toFixed(0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Payment</span>
+                  <span className="text-foreground font-medium">{selectedJob.paymentMethod}</span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">{selectedJob.description}</p>
+              <Alert className="border-amber-500/30 bg-amber-500/5">
+                <Info className="h-4 w-4 text-amber-500" />
+                <AlertDescription className="text-xs text-foreground">
+                  First applicant gets priority. Your application will be reviewed by an admin before assignment is confirmed.
+                </AlertDescription>
+              </Alert>
+              {applyMutation.isError && (
+                <p className="text-sm text-destructive">
+                  Failed to submit application. The job may already have an applicant.
+                </p>
+              )}
+            </div>
+          )}
+
+          {applySuccess && (
+            <div className="text-center py-4 space-y-3">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your application has been submitted and is <strong>pending admin verification</strong>.
+                You'll be assigned once an admin reviews and confirms your application.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter>
+            {applySuccess ? (
+              <Button onClick={() => setApplyDialogOpen(false)} className="w-full">
+                Close
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setApplyDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleApply}
+                  disabled={applyMutation.isPending}
+                >
+                  {applyMutation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Submitting...
+                    </span>
+                  ) : 'Apply Now'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Login Prompt Dialog ── */}
+      <Dialog open={loginPromptOpen} onOpenChange={setLoginPromptOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Login Required</DialogTitle>
+            <DialogDescription>
+              Please log in to subscribe to job alerts and be notified when new jobs are posted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+              <Bell className="w-6 h-6 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Join our worker network and never miss a job opportunity!
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLoginPromptOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setLoginPromptOpen(false);
+                await login();
+              }}
+              disabled={loginStatus === 'logging-in'}
+            >
+              {loginStatus === 'logging-in' ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Logging in...
+                </span>
+              ) : 'Login'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

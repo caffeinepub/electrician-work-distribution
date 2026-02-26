@@ -1,4 +1,3 @@
-import { Link, useLocation } from '@tanstack/react-router';
 import {
   Sidebar,
   SidebarContent,
@@ -9,26 +8,25 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
 } from '@/components/ui/sidebar';
 import {
-  Home,
+  LayoutDashboard,
+  ClipboardList,
+  Users,
+  CreditCard,
   Wrench,
   Briefcase,
-  LayoutDashboard,
-  Users,
-  ClipboardList,
-  CreditCard,
-  Zap,
+  BookMarked,
 } from 'lucide-react';
+import { Link, useLocation } from '@tanstack/react-router';
 
-const portalNavItems = [
-  { title: 'Home', url: '/', icon: Home },
+const portalItems = [
   { title: 'Request a Service', url: '/services', icon: Wrench },
-  { title: 'Worker Job Apply', url: '/jobs', icon: Briefcase },
+  { title: 'My Bookings', url: '/my-bookings', icon: BookMarked },
+  { title: 'Worker Job Apply', url: '/job-board', icon: Briefcase },
 ];
 
-const adminNavItems = [
+const adminItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Work Orders', url: '/work-orders', icon: ClipboardList },
   { title: 'Electricians', url: '/electricians', icon: Users },
@@ -39,28 +37,25 @@ export function AppSidebar() {
   const location = useLocation();
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="flex items-center justify-center w-8 h-8 rounded bg-primary">
-            <Zap className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-sidebar-foreground text-sm tracking-wide uppercase">
-            Technical Tech
-          </span>
-        </Link>
+    <Sidebar className="sidebar-dark">
+      <SidebarHeader className="p-4 sidebar-dark">
+        <div className="flex items-center gap-2">
+          <img src="/assets/generated/electropro-logo.dim_300x80.png" alt="ElectroPro" className="h-8 object-contain" />
+        </div>
       </SidebarHeader>
-
-      <SidebarContent>
+      <SidebarContent className="sidebar-dark">
         <SidebarGroup>
-          <SidebarGroupLabel>Portal</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/60 uppercase text-xs tracking-wider font-semibold">
+            Portal
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {portalNavItems.map((item) => (
+              {portalItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === item.url}
+                    className="text-sidebar-foreground hover:bg-white/10 hover:text-white data-[active=true]:bg-primary data-[active=true]:text-white"
                   >
                     <Link to={item.url}>
                       <item.icon className="w-4 h-4" />
@@ -74,14 +69,17 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sidebar-foreground/60 uppercase text-xs tracking-wider font-semibold">
+            Admin
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminNavItems.map((item) => (
+              {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === item.url}
+                    className="text-sidebar-foreground hover:bg-white/10 hover:text-white data-[active=true]:bg-primary data-[active=true]:text-white"
                   >
                     <Link to={item.url}>
                       <item.icon className="w-4 h-4" />
@@ -94,12 +92,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-
-      <SidebarFooter className="border-t border-sidebar-border px-4 py-3">
-        <p className="text-xs text-sidebar-foreground/50 text-center">
-          Technical Tech © {new Date().getFullYear()}
-        </p>
-      </SidebarFooter>
     </Sidebar>
   );
 }

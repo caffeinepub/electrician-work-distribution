@@ -1,22 +1,12 @@
 import { useState } from 'react';
-import {
-  useGetWorkOrders,
-  useGetElectricians,
-  useUpdateWorkOrderStatus,
-  useAssignElectrician,
-  useUpdateWorkOrderPayment,
-  useSubmitCustomerRating,
-} from '../hooks/useQueries';
-import { WorkOrder, WorkOrderStatus, PaymentStatus, Electrician } from '../backend';
-import { StatusBadge } from '../components/StatusBadge';
-import { PriorityBadge } from '../components/PriorityBadge';
-import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
-import { RatingDisplay } from '../components/RatingDisplay';
-import { RatingInput } from '../components/RatingInput';
+import { Search, Star, DollarSign, UserCheck, Loader2, ShieldCheck, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -26,348 +16,574 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/StatusBadge';
+import { PriorityBadge } from '@/components/PriorityBadge';
+import { PaymentStatusBadge } from '@/components/PaymentStatusBadge';
+import { ApplicationStatusBadge } from '@/components/ApplicationStatusBadge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Search, Star, DollarSign, Filter } from 'lucide-react';
-import { formatTimestamp } from '../lib/utils';
-import { toast } from 'sonner';
+  useGetAllWorkOrders,
+  useGetAllElectricians,
+  useUpdateWorkOrderStatus,
+  useAssignElectricianToWorkOrder,
+  useUpdateWorkOrderPayment,
+  useSubmitWorkerRating,
+  useAcceptWorkOrder,
+  useDeclineWorkOrder,
+  useVerifyWorkOrderApplication,
+  useGetWorkOrdersByApplicationStatus,
+} from '@/hooks/useQueries';
+import { WorkOrder, WorkOrderStatus, PaymentStatus, ApplicationProcessStatus } from '@/backend';
+import { formatTimestamp } from '@/lib/utils';
 
 export default function WorkOrders() {
-  const { data: workOrders = [], isLoading } = useGetWorkOrders();
-  const { data: electricians = [] } = useGetElectricians();
+  const { data: workOrders = [], isLoading } = useGetAllWorkOrders();
+  const { data: pendingVerificationOrders = [] } = useGetWorkOrdersByApplicationStatus(ApplicationProcessStatus.pending);
+  const { data: electricians = [] } = useGetAllElectricians();
 
-  const updateStatusMutation = useUpdateWorkOrderStatus();
-  const assignElectricianMutation = useAssignElectrician();
-  const updatePaymentMutation = useUpdateWorkOrderPayment();
-  const submitCustomerRatingMutation = useSubmitCustomerRating();
+  const updateStatus = useUpdateWorkOrderStatus();
+  const assignElectrician = useAssignElectricianToWorkOrder();
+  const updatePayment = useUpdateWorkOrderPayment();
+  const submitRating = useSubmitWorkerRating();
+  const acceptWorkOrder = useAcceptWorkOrder();
+  const declineWorkOrder = useDeclineWorkOrder();
+  const verifyApplication = useVerifyWorkOrderApplication();
 
-  const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('all');
 
-  // Payment edit dialog
-  const [paymentOrder, setPaymentOrder] = useState<WorkOrder | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editMethod, setEditMethod] = useState('');
-  const [editPayStatus, setEditPayStatus] = useState<PaymentStatus>(PaymentStatus.pending);
+  // Payment dialog
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<WorkOrder | null>(null);
+  const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'cash', status: 'pending' });
 
-  // Customer rating dialog
-  const [ratingOrder, setRatingOrder] = useState<WorkOrder | null>(null);
-  const [ratingValue, setRatingValue] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
+  // Rating dialog
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState<WorkOrder | null>(null);
+  const [ratingForm, setRatingForm] = useState({ rating: '5', comment: '' });
+
+  // Verify confirm dialog
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [selectedOrderForVerify, setSelectedOrderForVerify] = useState<WorkOrder | null>(null);
 
   const getElectricianName = (id: bigint) => {
-    const e = electricians.find((el: Electrician) => el.id === id);
-    return e ? e.name : `#${String(id)}`;
+    const e = electricians.find((el) => el.id === id);
+    return e ? e.name : `#${id}`;
   };
 
-  const filtered = workOrders.filter(wo => {
-    const matchSearch =
-      wo.title.toLowerCase().includes(search.toLowerCase()) ||
-      wo.customerEmail.toLowerCase().includes(search.toLowerCase()) ||
-      wo.location.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === 'all' || wo.status === filterStatus;
-    return matchSearch && matchStatus;
+  const filteredOrders = workOrders.filter((wo) => {
+    const matchesSearch =
+      !searchQuery ||
+      wo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      wo.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      wo.location.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || wo.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
+  const pendingVerificationFiltered = pendingVerificationOrders.filter((wo) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return wo.title.toLowerCase().includes(q) || wo.location.toLowerCase().includes(q);
+  });
+
+  const verifiedPendingOrders = workOrders.filter(
+    (wo) => wo.applicationStatus === ApplicationProcessStatus.verifiedPendingAssignment
+  );
+
   const openPaymentDialog = (order: WorkOrder) => {
-    setPaymentOrder(order);
-    setEditAmount(String(Number(order.paymentAmount)));
-    setEditMethod(order.paymentMethod || 'Cash');
-    setEditPayStatus(order.paymentStatus as PaymentStatus);
+    setSelectedOrderForPayment(order);
+    setPaymentForm({
+      amount: (Number(order.paymentAmount) / 100).toFixed(2),
+      method: order.paymentMethod,
+      status: order.paymentStatus,
+    });
+    setPaymentDialogOpen(true);
   };
 
-  const handleSavePayment = async () => {
-    if (!paymentOrder) return;
+  const handlePaymentSave = async () => {
+    if (!selectedOrderForPayment) return;
     try {
-      await updatePaymentMutation.mutateAsync({
-        id: paymentOrder.id,
-        paymentAmount: BigInt(Math.round(Number(editAmount) || 0)),
-        paymentMethod: editMethod,
-        paymentStatus: editPayStatus,
+      await updatePayment.mutateAsync({
+        id: selectedOrderForPayment.id,
+        paymentAmount: BigInt(Math.round(parseFloat(paymentForm.amount) * 100)),
+        paymentMethod: paymentForm.method,
+        paymentStatus: paymentForm.status as PaymentStatus,
       });
-      toast.success('Payment updated');
-      setPaymentOrder(null);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update payment');
+      setPaymentDialogOpen(false);
+    } catch (err) {
+      console.error('Payment update failed:', err);
     }
   };
 
   const openRatingDialog = (order: WorkOrder) => {
-    setRatingOrder(order);
-    setRatingValue(order.customerRating ? Number(order.customerRating.rating) : 0);
-    setRatingComment(order.customerRating?.comment || '');
+    setSelectedOrderForRating(order);
+    setRatingForm({ rating: '5', comment: '' });
+    setRatingDialogOpen(true);
   };
 
-  const handleSubmitCustomerRating = async () => {
-    if (!ratingOrder || ratingValue < 1) {
-      toast.error('Please select a rating (1–5 stars)');
-      return;
-    }
+  const handleRatingSave = async () => {
+    if (!selectedOrderForRating) return;
     try {
-      await submitCustomerRatingMutation.mutateAsync({
-        workOrderId: ratingOrder.id,
-        rating: BigInt(ratingValue),
-        comment: ratingComment,
+      await submitRating.mutateAsync({
+        workOrderId: selectedOrderForRating.id,
+        rating: BigInt(ratingForm.rating),
+        comment: ratingForm.comment,
       });
-      toast.success('Customer rating submitted!');
-      setRatingOrder(null);
-      setRatingValue(0);
-      setRatingComment('');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to submit rating');
+      setRatingDialogOpen(false);
+    } catch (err) {
+      console.error('Rating submit failed:', err);
     }
   };
 
-  const handleStatusChange = async (orderId: bigint, status: WorkOrderStatus) => {
+  const handleVerifyConfirm = async () => {
+    if (!selectedOrderForVerify) return;
     try {
-      await updateStatusMutation.mutateAsync({ id: orderId, status });
-      toast.success('Status updated');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update status');
+      await verifyApplication.mutateAsync(selectedOrderForVerify.id);
+      setVerifyDialogOpen(false);
+      setSelectedOrderForVerify(null);
+    } catch (err) {
+      console.error('Verify failed:', err);
     }
   };
 
-  const handleAssignElectrician = async (orderId: bigint, electricianId: bigint) => {
+  const handleAccept = async (workOrderId: bigint) => {
     try {
-      await assignElectricianMutation.mutateAsync({
-        workOrderId: orderId,
-        issuedElectrician: electricianId,
-      });
-      toast.success('Electrician assigned');
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to assign electrician');
+      await acceptWorkOrder.mutateAsync(workOrderId);
+    } catch (err) {
+      console.error('Accept failed:', err);
     }
   };
+
+  const handleDecline = async (workOrderId: bigint) => {
+    try {
+      await declineWorkOrder.mutateAsync(workOrderId);
+    } catch (err) {
+      console.error('Decline failed:', err);
+    }
+  };
+
+  const WorkOrderCard = ({ order }: { order: WorkOrder }) => (
+    <Card className="bg-card border-border">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-foreground text-sm">{order.title}</h3>
+              <StatusBadge status={order.status} />
+              <PriorityBadge priority={Number(order.priority)} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{order.description}</p>
+          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">#{String(order.id)}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-muted-foreground">Location: </span>
+            <span className="text-foreground">{order.location}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Technician: </span>
+            <span className="text-foreground">{getElectricianName(order.issuedElectrician)}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Customer: </span>
+            <span className="text-foreground">{order.customerEmail}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Created: </span>
+            <span className="text-foreground">{formatTimestamp(order.createdAt)}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <ApplicationStatusBadge status={order.applicationStatus} />
+          <PaymentStatusBadge status={order.paymentStatus} />
+          <span className="text-xs text-muted-foreground">
+            ₹{(Number(order.paymentAmount) / 100).toFixed(0)}
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
+          <Select
+            value={order.status}
+            onValueChange={async (val) => {
+              try {
+                await updateStatus.mutateAsync({ id: order.id, status: val as WorkOrderStatus });
+              } catch (err) {
+                console.error(err);
+              }
+            }}
+          >
+            <SelectTrigger className="h-7 text-xs w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={WorkOrderStatus.open}>Open</SelectItem>
+              <SelectItem value={WorkOrderStatus.inProgress}>In Progress</SelectItem>
+              <SelectItem value={WorkOrderStatus.completed}>Completed</SelectItem>
+              <SelectItem value={WorkOrderStatus.cancelled}>Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={String(order.issuedElectrician)}
+            onValueChange={async (val) => {
+              try {
+                await assignElectrician.mutateAsync({ workOrderId: order.id, issuedElectrician: BigInt(val) });
+              } catch (err) {
+                console.error(err);
+              }
+            }}
+          >
+            <SelectTrigger className="h-7 text-xs w-36">
+              <SelectValue placeholder="Assign tech" />
+            </SelectTrigger>
+            <SelectContent>
+              {electricians.map((e) => (
+                <SelectItem key={String(e.id)} value={String(e.id)}>{e.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openPaymentDialog(order)}>
+            <DollarSign className="w-3 h-3" />Payment
+          </Button>
+
+          {order.status === WorkOrderStatus.completed && (
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => openRatingDialog(order)}>
+              <Star className="w-3 h-3" />Rate
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const PendingVerificationCard = ({ order }: { order: WorkOrder }) => (
+    <Card className="bg-card border-amber-500/30 border">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-foreground text-sm">{order.title}</h3>
+              <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-400">
+                Pending Verification
+              </Badge>
+              <PriorityBadge priority={Number(order.priority)} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{order.description}</p>
+          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">#{String(order.id)}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-muted-foreground">Location: </span>
+            <span className="text-foreground">{order.location}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Technician: </span>
+            <span className="text-foreground">{getElectricianName(order.issuedElectrician)}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Customer: </span>
+            <span className="text-foreground">{order.customerEmail}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Created: </span>
+            <span className="text-foreground">{formatTimestamp(order.createdAt)}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <ApplicationStatusBadge status={order.applicationStatus} />
+          <span className="text-xs text-muted-foreground">
+            ₹{(Number(order.paymentAmount) / 100).toFixed(0)}
+          </span>
+        </div>
+
+        <div className="flex gap-2 pt-1 border-t border-border">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 text-xs gap-1"
+            onClick={() => {
+              setSelectedOrderForVerify(order);
+              setVerifyDialogOpen(true);
+            }}
+            disabled={verifyApplication.isPending}
+          >
+            {verifyApplication.isPending ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-3 h-3" />
+            )}
+            Verify Application
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="h-7 text-xs gap-1"
+            onClick={() => handleDecline(order.id)}
+            disabled={declineWorkOrder.isPending}
+          >
+            {declineWorkOrder.isPending ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <XCircle className="w-3 h-3" />
+            )}
+            Decline
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground tracking-tight">Work Orders</h1>
-        <p className="text-muted-foreground mt-1">Manage and track all work orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Work Orders</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage and track all service work orders</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {pendingVerificationOrders.length > 0 && (
+            <Badge variant="outline" className="border-amber-500/50 text-amber-400 gap-1">
+              <ShieldCheck className="w-3 h-3" />
+              {pendingVerificationOrders.length} pending verification
+            </Badge>
+          )}
+          {verifiedPendingOrders.length > 0 && (
+            <Badge variant="outline" className="border-blue-500/50 text-blue-400 gap-1">
+              <UserCheck className="w-3 h-3" />
+              {verifiedPendingOrders.length} awaiting assignment
+            </Badge>
+          )}
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card className="bg-card border-border">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by title, email, or location..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9 bg-background border-border text-foreground"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40 bg-background border-border text-foreground">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value={WorkOrderStatus.open}>Open</SelectItem>
-                  <SelectItem value={WorkOrderStatus.inProgress}>In Progress</SelectItem>
-                  <SelectItem value={WorkOrderStatus.completed}>Completed</SelectItem>
-                  <SelectItem value={WorkOrderStatus.cancelled}>Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search & Filter */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search work orders..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Filter status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value={WorkOrderStatus.open}>Open</SelectItem>
+            <SelectItem value={WorkOrderStatus.inProgress}>In Progress</SelectItem>
+            <SelectItem value={WorkOrderStatus.completed}>Completed</SelectItem>
+            <SelectItem value={WorkOrderStatus.cancelled}>Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Table */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="font-heading text-foreground">
-            Work Orders
-            <span className="ml-2 text-sm font-normal text-muted-foreground">({filtered.length})</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-4 w-full max-w-lg">
+          <TabsTrigger value="all">All ({workOrders.length})</TabsTrigger>
+          <TabsTrigger value="pending-verify">
+            Verify ({pendingVerificationOrders.length})
+          </TabsTrigger>
+          <TabsTrigger value="verified-assign">
+            Assign ({verifiedPendingOrders.length})
+          </TabsTrigger>
+          <TabsTrigger value="active">
+            Active ({workOrders.filter(wo => wo.status === WorkOrderStatus.inProgress).length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* All Orders Tab */}
+        <TabsContent value="all" className="mt-4">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
-              Loading work orders...
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center py-12 text-muted-foreground">
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
               No work orders found.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-muted-foreground">Order</TableHead>
-                    <TableHead className="text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-muted-foreground">Priority</TableHead>
-                    <TableHead className="text-muted-foreground">Electrician</TableHead>
-                    <TableHead className="text-muted-foreground">Payment</TableHead>
-                    <TableHead className="text-muted-foreground">Customer Rating</TableHead>
-                    <TableHead className="text-muted-foreground">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(order => (
-                    <TableRow key={String(order.id)} className="border-border hover:bg-muted/30">
-                      <TableCell>
-                        <div>
-                          <div className="font-medium text-foreground text-sm">{order.title}</div>
-                          <div className="text-xs text-muted-foreground">{order.location}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={order.status}
-                          onValueChange={v => handleStatusChange(order.id, v as WorkOrderStatus)}
-                        >
-                          <SelectTrigger className="w-36 h-8 text-xs bg-background border-border text-foreground">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            <SelectItem value={WorkOrderStatus.open}>Open</SelectItem>
-                            <SelectItem value={WorkOrderStatus.inProgress}>In Progress</SelectItem>
-                            <SelectItem value={WorkOrderStatus.completed}>Completed</SelectItem>
-                            <SelectItem value={WorkOrderStatus.cancelled}>Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <PriorityBadge priority={Number(order.priority)} />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={String(order.issuedElectrician)}
-                          onValueChange={v => handleAssignElectrician(order.id, BigInt(v))}
-                        >
-                          <SelectTrigger className="w-36 h-8 text-xs bg-background border-border text-foreground">
-                            <SelectValue>{getElectricianName(order.issuedElectrician)}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            {electricians.map((el: Electrician) => (
-                              <SelectItem key={String(el.id)} value={String(el.id)}>
-                                {el.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openPaymentDialog(order)}
-                            className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
-                          >
-                            <DollarSign className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {order.status === WorkOrderStatus.completed ? (
-                          order.customerRating ? (
-                            <div className="flex items-center gap-1">
-                              <RatingDisplay
-                                rating={Number(order.customerRating.rating)}
-                                count={1}
-                                size="sm"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openRatingDialog(order)}
-                                className="h-6 w-6 p-0 text-primary hover:bg-primary/10"
-                              >
-                                <Star className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openRatingDialog(order)}
-                              className="h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
-                            >
-                              <Star className="w-3 h-3 mr-1" />
-                              Rate Customer
-                            </Button>
-                          )
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {formatTimestamp(order.createdAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filteredOrders.map((order) => (
+                <WorkOrderCard key={String(order.id)} order={order} />
+              ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
 
-      {/* Payment Edit Dialog */}
-      <Dialog open={!!paymentOrder} onOpenChange={open => !open && setPaymentOrder(null)}>
-        <DialogContent className="bg-card border-border text-foreground">
+        {/* Pending Verification Tab */}
+        <TabsContent value="pending-verify" className="mt-4">
+          <div className="mb-3">
+            <p className="text-sm text-muted-foreground">
+              These jobs have received a worker application and are awaiting your verification before assignment.
+            </p>
+          </div>
+          {pendingVerificationFiltered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              No applications pending verification.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {pendingVerificationFiltered.map((order) => (
+                <PendingVerificationCard key={String(order.id)} order={order} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Verified - Pending Assignment Tab */}
+        <TabsContent value="verified-assign" className="mt-4">
+          <div className="mb-3">
+            <p className="text-sm text-muted-foreground">
+              These applications have been verified. Confirm assignment to move them to In Progress.
+            </p>
+          </div>
+          {verifiedPendingOrders.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              No verified applications awaiting assignment.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {verifiedPendingOrders.map((order) => (
+                <Card key={String(order.id)} className="bg-card border-blue-500/30 border">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-foreground text-sm">{order.title}</h3>
+                          <ApplicationStatusBadge status={order.applicationStatus} />
+                          <PriorityBadge priority={Number(order.priority)} />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{order.description}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">#{String(order.id)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-muted-foreground">Location: </span>
+                        <span className="text-foreground">{order.location}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Technician: </span>
+                        <span className="text-foreground">{getElectricianName(order.issuedElectrician)}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1 border-t border-border">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => handleAccept(order.id)}
+                        disabled={acceptWorkOrder.isPending}
+                      >
+                        {acceptWorkOrder.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <CheckCircle className="w-3 h-3" />
+                        )}
+                        Confirm Assignment
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => handleDecline(order.id)}
+                        disabled={declineWorkOrder.isPending}
+                      >
+                        {declineWorkOrder.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <XCircle className="w-3 h-3" />
+                        )}
+                        Decline
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Active Tab */}
+        <TabsContent value="active" className="mt-4">
+          {workOrders.filter(wo => wo.status === WorkOrderStatus.inProgress).length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              No active work orders.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {workOrders
+                .filter(wo => wo.status === WorkOrderStatus.inProgress)
+                .map((order) => (
+                  <WorkOrderCard key={String(order.id)} order={order} />
+                ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Payment Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-heading">Edit Payment</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Update payment for:{' '}
-              <span className="text-foreground font-medium">{paymentOrder?.title}</span>
+            <DialogTitle>Update Payment</DialogTitle>
+            <DialogDescription>
+              {selectedOrderForPayment?.title}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-foreground">Amount (₹)</Label>
+              <Label htmlFor="payAmount">Amount (₹)</Label>
               <Input
+                id="payAmount"
                 type="number"
-                min="0"
-                value={editAmount}
-                onChange={e => setEditAmount(e.target.value)}
-                className="bg-background border-border text-foreground"
+                value={paymentForm.amount}
+                onChange={(e) => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-foreground">Payment Method</Label>
-              <Select value={editMethod} onValueChange={setEditMethod}>
-                <SelectTrigger className="bg-background border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="Cash">Cash</SelectItem>
-                  <SelectItem value="UPI">UPI</SelectItem>
-                  <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="Card">Card</SelectItem>
-                  <SelectItem value="Cheque">Cheque</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="payMethod">Payment Method</Label>
+              <Input
+                id="payMethod"
+                value={paymentForm.method}
+                onChange={(e) => setPaymentForm(f => ({ ...f, method: e.target.value }))}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-foreground">Payment Status</Label>
-              <Select value={editPayStatus} onValueChange={v => setEditPayStatus(v as PaymentStatus)}>
-                <SelectTrigger className="bg-background border-border text-foreground">
+              <Label>Payment Status</Label>
+              <Select
+                value={paymentForm.status}
+                onValueChange={(val) => setPaymentForm(f => ({ ...f, status: val }))}
+              >
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-border">
+                <SelectContent>
                   <SelectItem value={PaymentStatus.pending}>Pending</SelectItem>
                   <SelectItem value={PaymentStatus.paid}>Paid</SelectItem>
                 </SelectContent>
@@ -375,54 +591,83 @@ export default function WorkOrders() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentOrder(null)} className="border-border">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSavePayment}
-              disabled={updatePaymentMutation.isPending}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {updatePaymentMutation.isPending ? 'Saving...' : 'Save'}
+            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handlePaymentSave} disabled={updatePayment.isPending}>
+              {updatePayment.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Customer Rating Dialog */}
-      <Dialog open={!!ratingOrder} onOpenChange={open => !open && setRatingOrder(null)}>
-        <DialogContent className="bg-card border-border text-foreground">
+      {/* Rating Dialog */}
+      <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-heading">
-              {ratingOrder?.customerRating ? 'Edit Customer Rating' : 'Rate Customer'}
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Rate the customer for:{' '}
-              <span className="text-foreground font-medium">{ratingOrder?.title}</span>
+            <DialogTitle>Rate Worker</DialogTitle>
+            <DialogDescription>
+              {selectedOrderForRating?.title}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <RatingInput
-              value={ratingValue}
-              onChange={setRatingValue}
-              comment={ratingComment}
-              onCommentChange={setRatingComment}
-            />
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Rating (1–5)</Label>
+              <Select
+                value={ratingForm.rating}
+                onValueChange={(val) => setRatingForm(f => ({ ...f, rating: val }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} Star{n !== 1 ? 's' : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ratingComment">Comment (Optional)</Label>
+              <Textarea
+                id="ratingComment"
+                placeholder="Share your experience..."
+                value={ratingForm.comment}
+                onChange={(e) => setRatingForm(f => ({ ...f, comment: e.target.value }))}
+                rows={3}
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRatingOrder(null)} className="border-border">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitCustomerRating}
-              disabled={submitCustomerRatingMutation.isPending || ratingValue < 1}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              {submitCustomerRatingMutation.isPending ? 'Submitting...' : 'Submit Rating'}
+            <Button variant="outline" onClick={() => setRatingDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleRatingSave} disabled={submitRating.isPending}>
+              {submitRating.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Rating'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Verify Confirm Dialog */}
+      <AlertDialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verify Application</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to verify the application for <strong>{selectedOrderForVerify?.title}</strong>?
+              This will move it to "Verified – Awaiting Assignment" status.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedOrderForVerify(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleVerifyConfirm} disabled={verifyApplication.isPending}>
+              {verifyApplication.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying...
+                </span>
+              ) : 'Verify'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

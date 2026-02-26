@@ -1,208 +1,147 @@
-import { useGetWorkOrders, useGetElectricians } from '../hooks/useQueries';
+import { useGetAllWorkOrders, useGetAllElectricians } from '../hooks/useQueries';
 import { WorkOrderStatus, PaymentStatus } from '../backend';
+import { formatTimestamp } from '../lib/utils';
 import { StatusBadge } from '../components/StatusBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Zap, ClipboardList, CheckCircle, Clock, DollarSign, Users } from 'lucide-react';
-import { formatTimestamp } from '../lib/utils';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
 export default function Dashboard() {
-  const { data: workOrders = [], isLoading: ordersLoading } = useGetWorkOrders();
-  const { data: electricians = [], isLoading: electriciansLoading } = useGetElectricians();
+  const { data: workOrders = [], isLoading: ordersLoading } = useGetAllWorkOrders();
+  const { data: electricians = [], isLoading: electriciansLoading } = useGetAllElectricians();
 
-  const openOrders = workOrders.filter(wo => wo.status === WorkOrderStatus.open);
-  const inProgressOrders = workOrders.filter(wo => wo.status === WorkOrderStatus.inProgress);
-  const completedOrders = workOrders.filter(wo => wo.status === WorkOrderStatus.completed);
-  const availableElectricians = electricians.filter(e => e.isAvailable);
-
-  const totalPaid = workOrders
-    .filter(wo => wo.paymentStatus === PaymentStatus.paid)
+  const totalOrders = workOrders.length;
+  const openOrders = workOrders.filter((wo) => wo.status === WorkOrderStatus.open).length;
+  const inProgressOrders = workOrders.filter((wo) => wo.status === WorkOrderStatus.inProgress).length;
+  const completedOrders = workOrders.filter((wo) => wo.status === WorkOrderStatus.completed).length;
+  const totalRevenue = workOrders
+    .filter((wo) => wo.paymentStatus === PaymentStatus.paid)
     .reduce((sum, wo) => sum + Number(wo.paymentAmount), 0);
-
-  const totalPending = workOrders
-    .filter(wo => wo.paymentStatus === PaymentStatus.pending)
-    .reduce((sum, wo) => sum + Number(wo.paymentAmount), 0);
-
-  const recentOrders = [...workOrders]
-    .sort((a, b) => Number(b.createdAt) - Number(a.createdAt))
-    .slice(0, 5);
+  const pendingPayments = workOrders.filter(
+    (wo) => wo.paymentStatus === PaymentStatus.pending && wo.status !== WorkOrderStatus.cancelled
+  );
 
   const stats = [
-    {
-      label: 'Total Orders',
-      value: workOrders.length,
-      icon: ClipboardList,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
-    },
-    {
-      label: 'Open',
-      value: openOrders.length,
-      icon: Clock,
-      color: 'text-yellow-400',
-      bg: 'bg-yellow-400/10',
-    },
-    {
-      label: 'In Progress',
-      value: inProgressOrders.length,
-      icon: Zap,
-      color: 'text-blue-400',
-      bg: 'bg-blue-400/10',
-    },
-    {
-      label: 'Completed',
-      value: completedOrders.length,
-      icon: CheckCircle,
-      color: 'text-green-400',
-      bg: 'bg-green-400/10',
-    },
-    {
-      label: 'Revenue Paid',
-      value: `₹${totalPaid.toLocaleString()}`,
-      icon: DollarSign,
-      color: 'text-primary',
-      bg: 'bg-primary/10',
-    },
-    {
-      label: 'Available Staff',
-      value: `${availableElectricians.length}/${electricians.length}`,
-      icon: Users,
-      color: 'text-purple-400',
-      bg: 'bg-purple-400/10',
-    },
+    { label: 'Total Orders', value: totalOrders, color: 'text-foreground' },
+    { label: 'Open', value: openOrders, color: 'text-blue-400' },
+    { label: 'In Progress', value: inProgressOrders, color: 'text-amber-400' },
+    { label: 'Completed', value: completedOrders, color: 'text-green-400' },
+    { label: 'Revenue', value: `$${totalRevenue.toLocaleString()}`, color: 'text-primary' },
+    { label: 'Staff', value: electricians.length, color: 'text-purple-400' },
   ];
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-heading font-bold text-foreground tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Overview of your electrical services operations</p>
-      </div>
+  const recentOrders = [...workOrders].reverse().slice(0, 10);
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {stats.map(stat => (
-          <Card key={stat.label} className="bg-card border-border">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex flex-col gap-2">
-                <div className={`w-9 h-9 rounded-lg ${stat.bg} flex items-center justify-center`}>
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                </div>
-                <div>
-                  <div className="text-xl font-heading font-bold text-foreground">{stat.value}</div>
-                  <div className="text-xs text-muted-foreground">{stat.label}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+  if (ordersLoading || electriciansLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {pendingPayments.length > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {pendingPayments.length} work order(s) have pending payments.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="bg-card border border-border rounded-sm p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{stat.label}</p>
+            <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+          </div>
         ))}
       </div>
 
-      {/* Pending Revenue Alert */}
-      {totalPending > 0 && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-          <DollarSign className="w-5 h-5 text-yellow-400 shrink-0" />
-          <div>
-            <span className="text-sm font-medium text-yellow-300">Pending Payments: </span>
-            <span className="text-sm text-yellow-200">
-              ₹{totalPending.toLocaleString()} outstanding across{' '}
-              {workOrders.filter(wo => wo.paymentStatus === PaymentStatus.pending).length} orders
-            </span>
-          </div>
+      {/* Recent Orders */}
+      <div className="bg-card border border-border rounded-sm">
+        <div className="p-4 border-b border-border">
+          <h2 className="font-semibold">Recent Orders</h2>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Work Orders */}
-        <div className="lg:col-span-2">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="font-heading text-foreground text-lg">Recent Work Orders</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {ordersLoading ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                  Loading...
-                </div>
-              ) : recentOrders.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                  No work orders yet.
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="text-muted-foreground text-xs">Title</TableHead>
-                      <TableHead className="text-muted-foreground text-xs">Status</TableHead>
-                      <TableHead className="text-muted-foreground text-xs">Priority</TableHead>
-                      <TableHead className="text-muted-foreground text-xs">Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentOrders.map(order => (
-                      <TableRow key={String(order.id)} className="border-border hover:bg-muted/30">
-                        <TableCell className="text-sm text-foreground font-medium">{order.title}</TableCell>
-                        <TableCell><StatusBadge status={order.status as WorkOrderStatus} /></TableCell>
-                        <TableCell><PriorityBadge priority={Number(order.priority)} /></TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{formatTimestamp(order.createdAt)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="text-left p-3">ID</th>
+                <th className="text-left p-3">Title</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-left p-3">Priority</th>
+                <th className="text-left p-3">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentOrders.map((order) => (
+                <tr key={order.id.toString()} className="border-b border-border/50 hover:bg-accent/30">
+                  <td className="p-3 font-mono text-xs">#{order.id.toString()}</td>
+                  <td className="p-3">{order.title}</td>
+                  <td className="p-3">
+                    <StatusBadge status={order.status} />
+                  </td>
+                  <td className="p-3">
+                    <PriorityBadge priority={Number(order.priority)} />
+                  </td>
+                  <td className="p-3 text-muted-foreground">{formatTimestamp(order.createdAt)}</td>
+                </tr>
+              ))}
+              {recentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                    No orders yet.
+                  </td>
+                </tr>
               )}
-            </CardContent>
-          </Card>
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        {/* Electrician Roster */}
-        <div>
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="font-heading text-foreground text-lg">Electrician Roster</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {electriciansLoading ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                  Loading...
-                </div>
-              ) : electricians.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                  No electricians yet.
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {electricians.slice(0, 6).map(el => (
-                    <div key={String(el.id)} className="flex items-center justify-between px-4 py-3">
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{el.name}</div>
-                        <div className="text-xs text-muted-foreground">{el.specialist}</div>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${
-                          el.isAvailable
-                            ? 'border-green-500/40 text-green-400 bg-green-500/10'
-                            : 'border-border text-muted-foreground'
-                        }`}
-                      >
-                        {el.isAvailable ? 'Available' : 'Busy'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+      {/* Electricians */}
+      <div className="bg-card border border-border rounded-sm">
+        <div className="p-4 border-b border-border">
+          <h2 className="font-semibold">Electrician Roster</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="text-left p-3">Name</th>
+                <th className="text-left p-3">Specialist</th>
+                <th className="text-left p-3">Availability</th>
+                <th className="text-left p-3">Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {electricians.map((e) => (
+                <tr key={e.id.toString()} className="border-b border-border/50 hover:bg-accent/30">
+                  <td className="p-3 font-medium">{e.name}</td>
+                  <td className="p-3 text-muted-foreground capitalize">{e.specialist}</td>
+                  <td className="p-3">
+                    <span className={`text-xs px-2 py-1 rounded-full ${e.isAvailable ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      {e.isAvailable ? 'Available' : 'Unavailable'}
+                    </span>
+                  </td>
+                  <td className="p-3 text-muted-foreground">{e.currency}{Number(e.hourlyRate)}/hr</td>
+                </tr>
+              ))}
+              {electricians.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                    No electricians yet.
+                  </td>
+                </tr>
               )}
-            </CardContent>
-          </Card>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
