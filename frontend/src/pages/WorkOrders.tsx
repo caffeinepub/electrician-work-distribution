@@ -103,6 +103,10 @@ export default function WorkOrders() {
     closeDialog();
   };
 
+  const verifyApplicationCount = workOrders.filter(
+    wo => wo.applicationStatus === ApplicationProcessStatus.pending && wo.status === WorkOrderStatus.open
+  ).length;
+
   const filteredOrders = useMemo(() => {
     let orders = workOrders;
     if (search) {
@@ -160,7 +164,7 @@ export default function WorkOrders() {
         <TabsList className="mb-4">
           <TabsTrigger value="all">All ({workOrders.length})</TabsTrigger>
           <TabsTrigger value="verify">
-            Verify ({workOrders.filter(wo => wo.applicationStatus === ApplicationProcessStatus.pending && wo.status === WorkOrderStatus.open).length})
+            Verify Application ({verifyApplicationCount})
           </TabsTrigger>
           <TabsTrigger value="active">
             Active ({workOrders.filter(wo => wo.status === WorkOrderStatus.inProgress).length})

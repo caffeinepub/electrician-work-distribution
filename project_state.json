@@ -1,24 +1,16 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Service booking app with admin panel. User wants to remove the 'actor not available' alert from the book service option, and add a contact number option to book service.",
+  "summary": "New project",
   "architectural_notes": [],
   "known_issues": [],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-remove-the-actor-not-available-alert-or-any-similar-error-warning-dialog-that-appears-when-a-user-attempts-to-use-the-book-service-option-the-book-service-flow-should-remain-accessible-and-functional-without-showing-this-blocking-alert",
-      "title": "Remove the 'actor not available' alert (or any similar error/warning dialog) that appears when a user attempts to use the Book Service option. The Book Service flow should remain accessible and functional without showing this blocking alert.",
+      "id": "feature-in-the-work-orders-page-frontend-src-pages-workorders-tsx-move-the-work-order-navigation-or-tab-option-so-that-it-appears-under-the-verify-application-section-instead-of-being-grouped-under-the-verify-section-ensure-the-ui-reflects-this-hierarchy-clearly-and-the-option-functions-correctly-in-its-new-location",
+      "title": "In the Work Orders page (frontend/src/pages/WorkOrders.tsx), move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section. Ensure the UI reflects this hierarchy clearly and the option functions correctly in its new location.",
       "reqIds": [
         "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-contact-number-input-field-to-the-book-service-form-services-tsx-this-field-should-allow-users-to-provide-a-phone-contact-number-when-submitting-a-service-booking-request",
-      "title": "Add a 'Contact Number' input field to the Book Service form (Services.tsx). This field should allow users to provide a phone/contact number when submitting a service booking request.",
-      "reqIds": [
-        "REQ-2"
       ],
       "version": 1
     }
@@ -26,19 +18,12 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Remove 'actor not available' alert from the book service option",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Add contact number option to the book service flow",
+      "summary": "Move 'work order' option in the application to be under 'verify application' section, not 'verify'",
       "reqIds": [],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "Technical Tech",
+  "projectName": "Move 'Work Order' option under 'Verify Application' section in Work Orders page",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

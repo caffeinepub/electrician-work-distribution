@@ -1,26 +1,23 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T15:51:11.661Z",
-  "summary": "Both REQ-1 and REQ-2 appear to be implemented. The actor-not-available alert has been removed and replaced with a graceful loading state in Services.tsx, and a Contact Number field has been added to the booking form, backend WorkOrder type, and admin WorkOrders view. All major acceptance criteria are covered.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-27T16:04:54.280Z",
+  "summary": "The diff shows that WorkOrders.tsx was modified and the file summary explicitly states the 'Verify' tab label was renamed to 'Verify Application'. REQ-1 requires moving the 'Work Order' navigation/tab option to appear under the 'Verify Application' section, not simply renaming the tab. The acceptance criteria specify that 'Work Order' is no longer under 'Verify' and is now accessible under 'Verify Application' as a sub-option or nested item. The file summary describes only a label rename, which may not satisfy the requirement of moving the 'Work Order' option to appear as a structurally distinct sub-item under 'Verify Application'.",
+  "missing_requirements": [
     {
-      "description": "A migration module (backend/migration.mo) was added to handle data migration for existing WorkOrder records when the new customerContactNumber field is introduced.",
-      "reason": "The build request does not mention adding a migration module or handling existing data migration. This is an extra implementation not requested in any requirement.",
+      "id": "REQ-1",
+      "requirement": "Move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section, ensuring the UI reflects this hierarchy clearly.",
+      "reason": "The file summary for WorkOrders.tsx only describes renaming the 'Verify' tab label to 'Verify Application', not restructuring the UI to place 'Work Order' as a sub-option or nested item under 'Verify Application'. Simply renaming a tab does not satisfy the AC of moving 'Work Order' out of 'Verify' and into 'Verify Application' as a hierarchically distinct placement.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo"
+        "frontend/src/pages/WorkOrders.tsx",
+        "frontend-file-summaries.txt"
       ]
     }
   ],
-  "confidence": 0.88,
+  "hallucinated_features": [],
+  "confidence": 0.55,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/Services.tsx",
     "frontend/src/pages/WorkOrders.tsx",
     "project_state.json"
   ]

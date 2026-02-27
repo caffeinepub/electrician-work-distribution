@@ -1,50 +1,22 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove actor-not-available alert and add contact number field to Book Service",
+  "title": "Move 'Work Order' option under 'Verify Application' section in Work Orders page",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Remove the 'actor not available' alert that appears when users attempt to use the Book Service option, ensuring the booking flow remains accessible without blocking error dialogs",
+      "summary": "Reorganize the Work Orders page UI to move the 'Work Order' navigation or tab option from the 'Verify' section to appear under the 'Verify Application' section, ensuring clear hierarchy and correct functionality",
       "acceptanceCriteria": [
-        "No 'actor not available' alert or toast is shown when the user navigates to or interacts with the Book Service page.",
-        "The Book Service page loads and renders without any blocking error dialogs related to actor availability.",
-        "If the actor is not yet initialized, the form should gracefully wait or show a loading state instead of an alert."
+        "The 'Work Order' option is no longer displayed under the 'Verify' section/tab/group.",
+        "The 'Work Order' option is now visible and accessible under the 'Verify Application' section/tab/group.",
+        "Clicking the 'Work Order' option under 'Verify Application' correctly navigates to or displays the work order content.",
+        "All other sections and options remain unaffected."
       ],
       "file_operations": [
-        {
-          "path": "frontend/src/pages/Services.tsx",
-          "operation": "modify",
-          "description": "Remove any alert/toast logic that displays 'actor not available' or similar error messages when the actor is not yet initialized. Replace with a graceful loading state or disabled form state that waits for the actor to become available without showing an error dialog. Ensure the form remains accessible and does not block users with alerts."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Add a 'Contact Number' input field to the Book Service form, allowing users to provide a phone number when submitting a service booking request",
-      "acceptanceCriteria": [
-        "The Book Service form includes a clearly labeled 'Contact Number' input field.",
-        "The contact number field accepts numeric and standard phone number characters.",
-        "The contact number value is submitted along with the rest of the work order data.",
-        "The backend WorkOrder data type is updated to include an optional or required contactNumber field.",
-        "The contact number is stored and retrievable via the backend.",
-        "The contact number is visible in the admin Work Orders view for each booking."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/Services.tsx",
-          "operation": "modify",
-          "description": "Add a 'Contact Number' input field to the service booking form. Include proper validation for phone number format (numeric and standard phone characters). Update the form state to capture the contact number value and pass it to the createWorkOrder mutation when submitting. Ensure the field is clearly labeled and follows the existing form field styling and layout patterns."
-        },
         {
           "path": "frontend/src/pages/WorkOrders.tsx",
           "operation": "modify",
-          "description": "Update the Work Orders table or detail view to display the customerContactNumber field for each work order. Ensure the contact number is visible to admins when viewing work order details or in the orders list, maintaining consistency with the existing layout and data display patterns."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Update the createWorkOrder mutation hook to include the contactNumber parameter in the backend method call. Ensure the parameter is passed correctly to actor.createWorkOrder() matching the backend interface signature that already includes customerContactNumber."
+          "description": "Reorganize the tabs, sections, or navigation elements in the WorkOrders page component to move the 'Work Order' option from being grouped under the 'Verify' section to being grouped under the 'Verify Application' section. Update any conditional rendering, tab structures, or navigation logic to reflect this new hierarchy. Ensure that clicking the moved option correctly displays or navigates to the work order content and that all other sections (status updates, accept/decline actions, verification, rating submissions) continue to function correctly."
         }
       ]
     }

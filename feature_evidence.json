@@ -2,31 +2,9 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-remove-the-actor-not-available-alert-or-any-similar-error-warning-dialog-that-appears-when-a-user-attempts-to-use-the-book-service-option-the-book-service-flow-should-remain-accessible-and-functional-without-showing-this-blocking-alert",
-      "featureTitle": "Remove the 'actor not available' alert (or any similar error/warning dialog) that appears when a user attempts to use the Book Service option. The Book Service flow should remain accessible and functional without showing this blocking alert.",
+      "featureId": "feature-in-the-work-orders-page-frontend-src-pages-workorders-tsx-move-the-work-order-navigation-or-tab-option-so-that-it-appears-under-the-verify-application-section-instead-of-being-grouped-under-the-verify-section-ensure-the-ui-reflects-this-hierarchy-clearly-and-the-option-functions-correctly-in-its-new-location",
+      "featureTitle": "In the Work Orders page (frontend/src/pages/WorkOrders.tsx), move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section. Ensure the UI reflects this hierarchy clearly and the option functions correctly in its new location.",
       "files": [
-        "frontend/src/pages/Services.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-contact-number-input-field-to-the-book-service-form-services-tsx-this-field-should-allow-users-to-provide-a-phone-contact-number-when-submitting-a-service-booking-request",
-      "featureTitle": "Add a 'Contact Number' input field to the Book Service form (Services.tsx). This field should allow users to provide a phone/contact number when submitting a service booking request.",
-      "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/Services.tsx",
         "frontend/src/pages/WorkOrders.tsx"
       ],
       "components": [
@@ -39,7 +17,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-2"
+        "REQ-1"
       ],
       "confidence": "high"
     }
