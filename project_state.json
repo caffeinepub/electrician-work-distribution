@@ -1,32 +1,24 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "A job marketplace/worker app where workers can apply for jobs. Adding a simplified job application flow, and a 'no available jobs' state that encourages workers to join and sign up for job alerts when no jobs are currently available.",
+  "summary": "Service booking app with admin panel. User wants to remove the 'actor not available' alert from the book service option, and add a contact number option to book service.",
   "architectural_notes": [],
   "known_issues": [],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-simplify-the-job-application-process-on-the-job-board-page-so-workers-can-apply-to-a-job-with-minimal-steps-reduce-the-multi-step-application-dialog-to-a-single-click-or-single-step-confirmation-e-g-one-apply-now-button-with-a-brief-confirmation-prompt-removing-unnecessary-intermediate-steps-while-still-recording-the-application-in-the-backend",
-      "title": "Simplify the job application process on the Job Board page so workers can apply to a job with minimal steps — reduce the multi-step application dialog to a single-click or single-step confirmation (e.g., one 'Apply Now' button with a brief confirmation prompt), removing unnecessary intermediate steps while still recording the application in the backend.",
+      "id": "feature-remove-the-actor-not-available-alert-or-any-similar-error-warning-dialog-that-appears-when-a-user-attempts-to-use-the-book-service-option-the-book-service-flow-should-remain-accessible-and-functional-without-showing-this-blocking-alert",
+      "title": "Remove the 'actor not available' alert (or any similar error/warning dialog) that appears when a user attempts to use the Book Service option. The Book Service flow should remain accessible and functional without showing this blocking alert.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-when-there-are-no-available-open-jobs-on-the-job-board-empty-state-display-a-prominent-join-us-panel-that-encourages-workers-to-sign-up-for-job-alerts-the-panel-should-include-a-friendly-message-such-as-no-jobs-available-right-now-join-our-worker-network-and-we-ll-alert-you-when-new-jobs-are-posted-a-join-us-call-to-action-button-and-a-secondary-note-reassuring-workers-that-they-ll-be-notified-when-jobs-become-available",
-      "title": "When there are no available/open jobs on the Job Board (empty state), display a prominent 'Join Us' panel that encourages workers to sign up for job alerts. The panel should include a friendly message such as 'No jobs available right now — Join our worker network and we'll alert you when new jobs are posted!', a 'Join Us' call-to-action button, and a secondary note reassuring workers that they'll be notified when jobs become available.",
+      "id": "feature-add-a-contact-number-input-field-to-the-book-service-form-services-tsx-this-field-should-allow-users-to-provide-a-phone-contact-number-when-submitting-a-service-booking-request",
+      "title": "Add a 'Contact Number' input field to the Book Service form (Services.tsx). This field should allow users to provide a phone/contact number when submitting a service booking request.",
       "reqIds": [
         "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-wire-the-join-us-button-on-the-job-board-empty-state-panel-to-call-the-backend-job-alert-subscription-function-after-a-successful-subscription-display-a-success-message-such-as-you-re-on-the-list-we-ll-alert-you-when-new-jobs-are-posted-and-disable-or-update-the-button-to-prevent-duplicate-submissions",
-      "title": "Wire the 'Join Us' button on the Job Board empty-state panel to call the backend job alert subscription function. After a successful subscription, display a success message such as 'You're on the list! We'll alert you when new jobs are posted.' and disable or update the button to prevent duplicate submissions.",
-      "reqIds": [
-        "REQ-4"
       ],
       "version": 1
     }
@@ -34,22 +26,14 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Simplified/easy job application method for workers",
+      "summary": "Remove 'actor not available' alert from the book service option",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "When no jobs are available, show a 'Join Us' prompt encouraging workers to sign up and receive job alerts/notifications",
+      "summary": "Add contact number option to the book service flow",
       "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Add a backend 'job alert subscription' capability: store a worker's interest/subscription intent when they click 'Join Us' on the empty-state panel. Record the worker's principal and a timestamp so that administrators can later view subscribed workers waiting for job alerts.",
-      "reqIds": [
-        "REQ-3"
-      ],
       "status": "pending"
     }
   ],

@@ -1,51 +1,39 @@
 import { WorkOrderStatus } from '../backend';
 
 interface StatusBadgeProps {
-  status: WorkOrderStatus | string;
+  status: WorkOrderStatus;
 }
 
-export function StatusBadge({ status }: StatusBadgeProps) {
+export default function StatusBadge({ status }: StatusBadgeProps) {
   const getClass = () => {
     switch (status) {
       case WorkOrderStatus.open:
-      case 'open':
-        return 'status-open';
+        return 'badge-open';
       case WorkOrderStatus.inProgress:
-      case 'inProgress':
-        return 'status-inProgress';
+        return 'badge-in-progress';
       case WorkOrderStatus.completed:
-      case 'completed':
-        return 'status-completed';
+        return 'badge-completed';
       case WorkOrderStatus.cancelled:
-      case 'cancelled':
-        return 'status-cancelled';
+        return 'badge-cancelled';
       default:
-        return 'status-open';
+        return 'badge-open';
     }
   };
 
   const getLabel = () => {
     switch (status) {
       case WorkOrderStatus.open:
-      case 'open':
         return 'Open';
       case WorkOrderStatus.inProgress:
-      case 'inProgress':
         return 'In Progress';
       case WorkOrderStatus.completed:
-      case 'completed':
         return 'Completed';
       case WorkOrderStatus.cancelled:
-      case 'cancelled':
         return 'Cancelled';
       default:
         return String(status);
     }
   };
 
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getClass()}`}>
-      {getLabel()}
-    </span>
-  );
+  return <span className={`badge ${getClass()}`}>{getLabel()}</span>;
 }

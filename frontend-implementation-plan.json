@@ -1,63 +1,50 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Simplified Job Application Flow & 'No Available Jobs' Join Us Prompt",
+  "title": "Remove actor-not-available alert and add contact number field to Book Service",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Simplify the job application process to a single-click or single-step confirmation, replacing the multi-step stepper dialog while maintaining backend application recording",
+      "summary": "Remove the 'actor not available' alert that appears when users attempt to use the Book Service option, ensuring the booking flow remains accessible without blocking error dialogs",
       "acceptanceCriteria": [
-        "Worker can apply to a job in one click or with at most one confirmation step",
-        "Application is still submitted and recorded correctly in the backend",
-        "The simplified flow replaces the existing multi-step stepper dialog on the Job Board",
-        "Applied jobs continue to be tracked and displayed correctly (applied/accepted/declined states)"
+        "No 'actor not available' alert or toast is shown when the user navigates to or interacts with the Book Service page.",
+        "The Book Service page loads and renders without any blocking error dialogs related to actor availability.",
+        "If the actor is not yet initialized, the form should gracefully wait or show a loading state instead of an alert."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/JobBoard.tsx",
+          "path": "frontend/src/pages/Services.tsx",
           "operation": "modify",
-          "description": "Replace the multi-step application dialog (JobApplicationStepper and stepper state management) with a simple single-click 'Apply Now' button and a lightweight confirmation dialog. Keep the existing applyForWorkOrder backend call and localStorage tracking for applied jobs. Ensure that clicking 'Apply' triggers the backend call immediately after confirmation, updates the appliedJobs state, and displays success feedback. The simplified flow should maintain all existing job filtering (open/available orders) and application status display (applied/accepted/declined badges)."
+          "description": "Remove any alert/toast logic that displays 'actor not available' or similar error messages when the actor is not yet initialized. Replace with a graceful loading state or disabled form state that waits for the actor to become available without showing an error dialog. Ensure the form remains accessible and does not block users with alerts."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Display a 'Join Us' empty-state panel when no jobs are available, encouraging workers to sign up for job alerts",
+      "summary": "Add a 'Contact Number' input field to the Book Service form, allowing users to provide a phone number when submitting a service booking request",
       "acceptanceCriteria": [
-        "When the Job Board has zero open/available work orders, the 'Join Us' empty-state panel is shown instead of a blank list",
-        "The panel displays an encouraging headline and message about joining the worker network",
-        "A visible 'Join Us' call-to-action button is present in the empty-state panel",
-        "A message reassures workers that they will be alerted when new jobs are posted",
-        "When jobs are available, the normal job listing is shown and the empty-state panel is hidden"
+        "The Book Service form includes a clearly labeled 'Contact Number' input field.",
+        "The contact number field accepts numeric and standard phone number characters.",
+        "The contact number value is submitted along with the rest of the work order data.",
+        "The backend WorkOrder data type is updated to include an optional or required contactNumber field.",
+        "The contact number is stored and retrievable via the backend.",
+        "The contact number is visible in the admin Work Orders view for each booking."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/JobBoard.tsx",
+          "path": "frontend/src/pages/Services.tsx",
           "operation": "modify",
-          "description": "Add an empty-state panel that renders when the filtered openWorkOrders array is empty. The panel should display a friendly headline such as 'No jobs available right now', a message encouraging workers to join the worker network and receive alerts when new jobs are posted, a prominent 'Join Us' call-to-action button, and a reassuring note about future job notifications. Conditionally render this panel when openWorkOrders.length === 0, and hide it when jobs are available. Style the panel to be visually prominent and welcoming using existing Tailwind classes."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Wire the 'Join Us' button to call the backend subscribeToJobAlerts function and display success feedback after subscription",
-      "acceptanceCriteria": [
-        "Clicking 'Join Us' triggers a backend call to subscribe the worker for job alerts",
-        "A success confirmation message is shown after successful subscription",
-        "The 'Join Us' button is disabled or changed to a 'Subscribed' state after successful submission",
-        "If the worker is not authenticated, prompt them to log in before subscribing",
-        "Loading and error states are handled gracefully"
-      ],
-      "file_operations": [
+          "description": "Add a 'Contact Number' input field to the service booking form. Include proper validation for phone number format (numeric and standard phone characters). Update the form state to capture the contact number value and pass it to the createWorkOrder mutation when submitting. Ensure the field is clearly labeled and follows the existing form field styling and layout patterns."
+        },
+        {
+          "path": "frontend/src/pages/WorkOrders.tsx",
+          "operation": "modify",
+          "description": "Update the Work Orders table or detail view to display the customerContactNumber field for each work order. Ensure the contact number is visible to admins when viewing work order details or in the orders list, maintaining consistency with the existing layout and data display patterns."
+        },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add a new React Query mutation hook useSubscribeToJobAlerts that wraps the backend actor.subscribeToJobAlerts() call. The hook should return mutation functions (mutate, mutateAsync) and state (isLoading, isError, isSuccess). Include proper error handling and query invalidation if needed. Also add a query hook useIsSubscribedToJobAlerts that wraps actor.isSubscribedToJobAlerts() to check current subscription status."
-        },
-        {
-          "path": "frontend/src/pages/JobBoard.tsx",
-          "operation": "modify",
-          "description": "Wire the 'Join Us' button in the empty-state panel to call useSubscribeToJobAlerts mutation. Before subscribing, check authentication state using useInternetIdentity and prompt the user to log in if not authenticated. After successful subscription, display a success message (e.g., 'You're on the list! We'll alert you when new jobs are posted.') using a toast or inline message. Update the button to a 'Subscribed' state (disabled or with updated text) after successful submission. Handle loading state by disabling the button and showing a spinner. Handle errors gracefully with an error message. Use the useIsSubscribedToJobAlerts query to check if the user is already subscribed and conditionally render the button state on mount."
+          "description": "Update the createWorkOrder mutation hook to include the contactNumber parameter in the backend method call. Ensure the parameter is passed correctly to actor.createWorkOrder() matching the backend interface signature that already includes customerContactNumber."
         }
       ]
     }

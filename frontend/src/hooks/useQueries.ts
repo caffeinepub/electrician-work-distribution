@@ -3,17 +3,57 @@ import { useActor } from './useActor';
 import {
   WorkOrder,
   Electrician,
+  UserProfile,
+  ApplicationProcessStatus,
+  PaymentStatus,
   Speciality,
   WorkAvailability,
   WorkOrderStatus,
-  PaymentStatus,
-  ApplicationProcessStatus,
-} from '@/backend';
+  ElectricianQualification,
+} from '../backend';
 
-// ── Electricians ──────────────────────────────────────────────────────────────
+// ─── User Profile ────────────────────────────────────────────────────────────
+
+export function useGetCallerUserProfile() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  const query = useQuery<UserProfile | null>({
+    queryKey: ['currentUserProfile'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getCallerUserProfile();
+    },
+    enabled: !!actor && !actorFetching,
+    retry: false,
+  });
+
+  return {
+    ...query,
+    isLoading: actorFetching || query.isLoading,
+    isFetched: !!actor && query.isFetched,
+  };
+}
+
+export function useSaveCallerUserProfile() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (profile: UserProfile) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.saveCallerUserProfile(profile);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+    },
+  });
+}
+
+// ─── Electricians ─────────────────────────────────────────────────────────────
 
 export function useGetAllElectricians() {
   const { actor, isFetching } = useActor();
+
   return useQuery<Electrician[]>({
     queryKey: ['electricians'],
     queryFn: async () => {
@@ -27,11 +67,13 @@ export function useGetAllElectricians() {
 export function useAddElectrician() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: {
       name: string;
       specialist: Speciality;
       workAvailability: WorkAvailability;
+      qualification: ElectricianQualification;
       email: string;
       address: string;
       hourlyRate: bigint;
@@ -43,6 +85,7 @@ export function useAddElectrician() {
         params.name,
         params.specialist,
         params.workAvailability,
+        params.qualification,
         params.email,
         params.address,
         params.hourlyRate,
@@ -59,18 +102,20 @@ export function useAddElectrician() {
 export function useUpdateElectrician() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: {
       id: bigint;
-      name?: string | null;
-      specialist?: Speciality | null;
-      isAvailable?: boolean | null;
-      workAvailability?: WorkAvailability | null;
-      email?: string | null;
-      address?: string | null;
-      hourlyRate?: bigint | null;
-      currency?: string | null;
-      paymentMethod?: string | null;
+      name?: string;
+      specialist?: Speciality;
+      isAvailable?: boolean;
+      workAvailability?: WorkAvailability;
+      qualification?: ElectricianQualification;
+      email?: string;
+      address?: string;
+      hourlyRate?: bigint;
+      currency?: string;
+      paymentMethod?: string;
     }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.updateElectrician(
@@ -79,6 +124,7 @@ export function useUpdateElectrician() {
         params.specialist ?? null,
         params.isAvailable ?? null,
         params.workAvailability ?? null,
+        params.qualification ?? null,
         params.email ?? null,
         params.address ?? null,
         params.hourlyRate ?? null,
@@ -95,6 +141,7 @@ export function useUpdateElectrician() {
 export function useRemoveElectrician() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!actor) throw new Error('Actor not available');
@@ -106,10 +153,11 @@ export function useRemoveElectrician() {
   });
 }
 
-// ── Work Orders ───────────────────────────────────────────────────────────────
+// ─── Work Orders ──────────────────────────────────────────────────────────────
 
 export function useGetAllWorkOrders() {
   const { actor, isFetching } = useActor();
+
   return useQuery<WorkOrder[]>({
     queryKey: ['workOrders'],
     queryFn: async () => {
@@ -122,6 +170,7 @@ export function useGetAllWorkOrders() {
 
 export function useGetCurrentUserWorkOrders() {
   const { actor, isFetching } = useActor();
+
   return useQuery<WorkOrder[]>({
     queryKey: ['currentUserWorkOrders'],
     queryFn: async () => {
@@ -135,18 +184,20 @@ export function useGetCurrentUserWorkOrders() {
 export function useCreateWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: {
       title: string;
       description: string;
       location: string;
       priority: bigint;
-      issuedElectrician: bigint;
+      issuedElectrician: bigint | null;
       customerEmail: string;
       customerAddress: string;
+      customerContactNumber: string;
       paymentAmount: bigint;
       paymentMethod: string;
-      preferredEducation: string;
+      preferredEducation: ElectricianQualification;
     }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.createWorkOrder(
@@ -157,6 +208,7 @@ export function useCreateWorkOrder() {
         params.issuedElectrician,
         params.customerEmail,
         params.customerAddress,
+        params.customerContactNumber,
         params.paymentAmount,
         params.paymentMethod,
         params.preferredEducation,
@@ -164,13 +216,15 @@ export function useCreateWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
     },
   });
 }
 
-export function useUpdateWorkOrderStatus() {
+export function useUpdateWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: { id: bigint; status: WorkOrderStatus }) => {
       if (!actor) throw new Error('Actor not available');
@@ -182,9 +236,25 @@ export function useUpdateWorkOrderStatus() {
   });
 }
 
+export function useAssignElectrician() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: bigint; issuedElectrician: bigint }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.assignElectricianToWorkOrder(params.workOrderId, params.issuedElectrician);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+    },
+  });
+}
+
 export function useUpdateWorkOrderPayment() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: {
       id: bigint;
@@ -206,23 +276,10 @@ export function useUpdateWorkOrderPayment() {
   });
 }
 
-export function useAssignElectricianToWorkOrder() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (params: { workOrderId: bigint; issuedElectrician: bigint }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.assignElectricianToWorkOrder(params.workOrderId, params.issuedElectrician);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
-    },
-  });
-}
-
 export function useApplyForWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (workOrderId: bigint) => {
       if (!actor) throw new Error('Actor not available');
@@ -237,6 +294,7 @@ export function useApplyForWorkOrder() {
 export function useAcceptWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (workOrderId: bigint) => {
       if (!actor) throw new Error('Actor not available');
@@ -244,6 +302,7 @@ export function useAcceptWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
     },
   });
 }
@@ -251,6 +310,7 @@ export function useAcceptWorkOrder() {
 export function useDeclineWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (workOrderId: bigint) => {
       if (!actor) throw new Error('Actor not available');
@@ -258,6 +318,7 @@ export function useDeclineWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
     },
   });
 }
@@ -265,6 +326,7 @@ export function useDeclineWorkOrder() {
 export function useVerifyWorkOrderApplication() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (workOrderId: bigint) => {
       if (!actor) throw new Error('Actor not available');
@@ -276,21 +338,25 @@ export function useVerifyWorkOrderApplication() {
   });
 }
 
-export function useGetWorkOrdersByApplicationStatus(status: ApplicationProcessStatus) {
-  const { actor, isFetching } = useActor();
-  return useQuery<WorkOrder[]>({
-    queryKey: ['workOrdersByApplicationStatus', status],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getWorkOrdersByApplicationStatus(status);
+export function useUpdateApplicationStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: bigint; newStatus: ApplicationProcessStatus }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateApplicationStatusForWorkOrder(params.workOrderId, params.newStatus);
     },
-    enabled: !!actor && !isFetching,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+    },
   });
 }
 
 export function useSubmitWorkerRating() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: { workOrderId: bigint; rating: bigint; comment: string }) => {
       if (!actor) throw new Error('Actor not available');
@@ -305,6 +371,7 @@ export function useSubmitWorkerRating() {
 export function useSubmitCustomerRating() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (params: { workOrderId: bigint; rating: bigint; comment: string }) => {
       if (!actor) throw new Error('Actor not available');
@@ -316,24 +383,13 @@ export function useSubmitCustomerRating() {
   });
 }
 
-export function useGetWorkOrdersByElectrician(electricianId: bigint) {
-  const { actor, isFetching } = useActor();
-  return useQuery<WorkOrder[]>({
-    queryKey: ['workOrdersByElectrician', electricianId.toString()],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getWorkOrdersByElectrician(electricianId);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ── Job Alert Subscriptions ───────────────────────────────────────────────────
+// ─── Job Alerts ───────────────────────────────────────────────────────────────
 
 export function useIsSubscribedToJobAlerts() {
   const { actor, isFetching } = useActor();
+
   return useQuery<boolean>({
-    queryKey: ['isSubscribedToJobAlerts'],
+    queryKey: ['jobAlertSubscription'],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isSubscribedToJobAlerts();
@@ -345,13 +401,14 @@ export function useIsSubscribedToJobAlerts() {
 export function useSubscribeToJobAlerts() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return actor.subscribeToJobAlerts();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['isSubscribedToJobAlerts'] });
+      queryClient.invalidateQueries({ queryKey: ['jobAlertSubscription'] });
     },
   });
 }

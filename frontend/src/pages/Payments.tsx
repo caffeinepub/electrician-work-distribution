@@ -3,8 +3,8 @@ import { useGetAllWorkOrders, useUpdateWorkOrderPayment } from '../hooks/useQuer
 import { PaymentStatus, WorkOrderStatus } from '../backend';
 import type { WorkOrder } from '../backend';
 import { formatTimestamp } from '../lib/utils';
-import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
-import { StatusBadge } from '../components/StatusBadge';
+import PaymentStatusBadge from '../components/PaymentStatusBadge';
+import StatusBadge from '../components/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

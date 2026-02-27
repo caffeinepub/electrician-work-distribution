@@ -26,11 +26,12 @@ export interface WorkOrder {
     workerRating?: Rating;
     createdAt: Time;
     customerRating?: Rating;
-    preferredEducation: string;
+    preferredEducation: ElectricianQualification;
     description: string;
     applicationStatus: ApplicationProcessStatus;
     customerAddress: string;
-    issuedElectrician: bigint;
+    issuedElectrician?: bigint;
+    customerContactNumber: string;
     priority: bigint;
     customerEmail: string;
     paymentAmount: bigint;
@@ -50,6 +51,7 @@ export interface Electrician {
     email: string;
     currency: string;
     address: string;
+    qualification: ElectricianQualification;
 }
 export interface UserProfile {
     name: string;
@@ -61,6 +63,11 @@ export enum ApplicationProcessStatus {
     verifiedPendingAssignment = "verifiedPendingAssignment",
     accepted = "accepted",
     declined = "declined"
+}
+export enum ElectricianQualification {
+    eeeDiploma = "eeeDiploma",
+    electronicElectricalEngineering = "electronicElectricalEngineering",
+    itiElectrician = "itiElectrician"
 }
 export enum PaymentStatus {
     pending = "pending",
@@ -94,11 +101,11 @@ export enum WorkOrderStatus {
 }
 export interface backendInterface {
     acceptWorkOrder(workOrderId: bigint): Promise<void>;
-    addElectrician(name: string, specialist: Speciality, workAvailability: WorkAvailability, email: string, address: string, hourlyRate: bigint, currency: string, paymentMethod: string): Promise<bigint>;
+    addElectrician(name: string, specialist: Speciality, workAvailability: WorkAvailability, qualification: ElectricianQualification, email: string, address: string, hourlyRate: bigint, currency: string, paymentMethod: string): Promise<bigint>;
     applyForWorkOrder(workOrderId: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignElectricianToWorkOrder(workOrderId: bigint, issuedElectrician: bigint): Promise<void>;
-    createWorkOrder(title: string, description: string, location: string, priority: bigint, issuedElectrician: bigint, customerEmail: string, customerAddress: string, paymentAmount: bigint, paymentMethod: string, preferredEducation: string): Promise<bigint>;
+    createWorkOrder(title: string, description: string, location: string, priority: bigint, issuedElectrician: bigint | null, customerEmail: string, customerAddress: string, customerContactNumber: string, paymentAmount: bigint, paymentMethod: string, preferredEducation: ElectricianQualification): Promise<bigint>;
     declineWorkOrder(workOrderId: bigint): Promise<void>;
     findElectricianById(id: bigint): Promise<Electrician>;
     findWorkOrderById(id: bigint): Promise<WorkOrder>;
@@ -121,7 +128,7 @@ export interface backendInterface {
     submitWorkerRating(workOrderId: bigint, rating: bigint, comment: string): Promise<void>;
     subscribeToJobAlerts(): Promise<void>;
     updateApplicationStatusForWorkOrder(workOrderId: bigint, newStatus: ApplicationProcessStatus): Promise<void>;
-    updateElectrician(id: bigint, name: string | null, specialist: Speciality | null, isAvailable: boolean | null, workAvailability: WorkAvailability | null, email: string | null, address: string | null, hourlyRate: bigint | null, currency: string | null, paymentMethod: string | null): Promise<void>;
+    updateElectrician(id: bigint, name: string | null, specialist: Speciality | null, isAvailable: boolean | null, workAvailability: WorkAvailability | null, qualification: ElectricianQualification | null, email: string | null, address: string | null, hourlyRate: bigint | null, currency: string | null, paymentMethod: string | null): Promise<void>;
     updateWorkOrderPayment(id: bigint, paymentAmount: bigint, paymentMethod: string, paymentStatus: PaymentStatus): Promise<void>;
     updateWorkOrderStatus(id: bigint, status: WorkOrderStatus): Promise<void>;
     verifyWorkOrderApplication(workOrderId: bigint): Promise<void>;

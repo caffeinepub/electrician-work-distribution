@@ -1,102 +1,135 @@
 import { lazy, Suspense } from 'react';
-import { createRouter, createRoute, createRootRoute, RouterProvider } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, RouterProvider, Outlet } from '@tanstack/react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from 'next-themes';
+import { Toaster } from '@/components/ui/sonner';
 import Layout from './components/Layout';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { LoadingFallback } from './components/LoadingFallback';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoadingFallback from './components/LoadingFallback';
 
-// Lazy-loaded page components for code splitting / low data consumption
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Services = lazy(() => import('./pages/Services'));
+const JobBoard = lazy(() => import('./pages/JobBoard'));
+const MyBookings = lazy(() => import('./pages/MyBookings'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const WorkOrders = lazy(() => import('./pages/WorkOrders'));
 const Electricians = lazy(() => import('./pages/Electricians'));
-const Services = lazy(() => import('./pages/Services'));
-const JobBoard = lazy(() => import('./pages/JobBoard'));
 const Payments = lazy(() => import('./pages/Payments'));
-const MyBookings = lazy(() => import('./pages/MyBookings'));
 
-// Suspense wrapper helper
-function Lazy({ component: Component }: { component: React.ComponentType }) {
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Component />
-    </Suspense>
-  );
-}
-
-// Root route with Layout
-const rootRoute = createRootRoute({
-  component: () => <Layout />,
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
 });
 
-// Protected route wrapper
+const rootRoute = createRootRoute({
+  component: () => (
+    <Layout>
+      <Outlet />
+    </Layout>
+  ),
+});
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <LandingPage />
+    </Suspense>
+  ),
+});
+
+const servicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/services',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <Services />
+    </Suspense>
+  ),
+});
+
+const jobsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/jobs',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <JobBoard />
+    </Suspense>
+  ),
+});
+
+const myBookingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/my-bookings',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <MyBookings />
+    </Suspense>
+  ),
+});
+
 const protectedRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'protected',
   component: ProtectedRoute,
 });
 
-// Admin routes (protected)
 const dashboardRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/dashboard',
-  component: () => <Lazy component={Dashboard} />,
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <Dashboard />
+    </Suspense>
+  ),
 });
 
 const workOrdersRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/work-orders',
-  component: () => <Lazy component={WorkOrders} />,
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <WorkOrders />
+    </Suspense>
+  ),
 });
 
 const electriciansRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/electricians',
-  component: () => <Lazy component={Electricians} />,
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <Electricians />
+    </Suspense>
+  ),
 });
 
 const paymentsRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/payments',
-  component: () => <Lazy component={Payments} />,
-});
-
-// Public routes (no auth required)
-const servicesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/services',
-  component: () => <Lazy component={Services} />,
-});
-
-const jobsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/jobs',
-  component: () => <Lazy component={JobBoard} />,
-});
-
-const myBookingsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/my-bookings',
-  component: () => <Lazy component={MyBookings} />,
-});
-
-// Landing page — portal entry point
-const indexRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/',
-  component: () => <Lazy component={LandingPage} />,
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <Payments />
+    </Suspense>
+  ),
 });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  servicesRoute,
+  jobsRoute,
+  myBookingsRoute,
   protectedRoute.addChildren([
     dashboardRoute,
     workOrdersRoute,
     electriciansRoute,
     paymentsRoute,
   ]),
-  servicesRoute,
-  jobsRoute,
-  myBookingsRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -108,5 +141,12 @@ declare module '@tanstack/react-router' {
 }
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster />
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
 }

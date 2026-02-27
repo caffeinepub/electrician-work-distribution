@@ -1,31 +1,29 @@
 interface PriorityBadgeProps {
-  priority: number;
+  priority: bigint | number;
 }
 
-export function PriorityBadge({ priority }: PriorityBadgeProps) {
+export default function PriorityBadge({ priority }: PriorityBadgeProps) {
+  const p = Number(priority);
+
   const getClass = () => {
-    switch (priority) {
-      case 1: return 'priority-low';
-      case 2: return 'priority-medium';
-      case 3: return 'priority-high';
-      case 4: return 'priority-critical';
-      default: return 'priority-medium';
+    switch (p) {
+      case 1: return 'badge-priority-low';
+      case 2: return 'badge-priority-medium';
+      case 3: return 'badge-priority-high';
+      case 4: return 'badge-priority-urgent';
+      default: return 'badge-priority-low';
     }
   };
 
   const getLabel = () => {
-    switch (priority) {
+    switch (p) {
       case 1: return 'Low';
       case 2: return 'Medium';
       case 3: return 'High';
       case 4: return 'Urgent';
-      default: return 'Medium';
+      default: return `P${p}`;
     }
   };
 
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getClass()}`}>
-      {getLabel()}
-    </span>
-  );
+  return <span className={`badge ${getClass()}`}>{getLabel()}</span>;
 }

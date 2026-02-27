@@ -1,98 +1,57 @@
 {
   "kind": "build_request",
-  "title": "Simplified Job Application Flow & 'No Available Jobs' Join Us Prompt",
+  "title": "Remove actor-not-available alert and add contact number field to Book Service",
   "projectName": "Technical Tech",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Simplify the job application process on the Job Board page so workers can apply to a job with minimal steps — reduce the multi-step application dialog to a single-click or single-step confirmation (e.g., one 'Apply Now' button with a brief confirmation prompt), removing unnecessary intermediate steps while still recording the application in the backend.",
+      "text": "Remove the 'actor not available' alert (or any similar error/warning dialog) that appears when a user attempts to use the Book Service option. The Book Service flow should remain accessible and functional without showing this blocking alert.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-4"
         ],
         "quotes": [
-          "apply job for easy method"
+          "book service option actor not available alert don't see please cancel it"
         ]
       },
       "acceptanceCriteria": [
-        "Worker can apply to a job in one click or with at most one confirmation step",
-        "Application is still submitted and recorded correctly in the backend",
-        "The simplified flow replaces the existing multi-step stepper dialog on the Job Board",
-        "Applied jobs continue to be tracked and displayed correctly (applied/accepted/declined states)"
+        "No 'actor not available' alert or toast is shown when the user navigates to or interacts with the Book Service page.",
+        "The Book Service page loads and renders without any blocking error dialogs related to actor availability.",
+        "If the actor is not yet initialized, the form should gracefully wait or show a loading state instead of an alert."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "When there are no available/open jobs on the Job Board (empty state), display a prominent 'Join Us' panel that encourages workers to sign up for job alerts. The panel should include a friendly message such as 'No jobs available right now — Join our worker network and we'll alert you when new jobs are posted!', a 'Join Us' call-to-action button, and a secondary note reassuring workers that they'll be notified when jobs become available.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "no available jobs no problem join us worker job always alert you please join us"
-        ]
-      },
-      "acceptanceCriteria": [
-        "When the Job Board has zero open/available work orders, the 'Join Us' empty-state panel is shown instead of a blank list",
-        "The panel displays an encouraging headline and message about joining the worker network",
-        "A visible 'Join Us' call-to-action button is present in the empty-state panel",
-        "A message reassures workers that they will be alerted when new jobs are posted",
-        "When jobs are available, the normal job listing is shown and the empty-state panel is hidden"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Add a backend 'job alert subscription' capability: store a worker's interest/subscription intent when they click 'Join Us' on the empty-state panel. Record the worker's principal and a timestamp so that administrators can later view subscribed workers waiting for job alerts.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-4"
-        ],
-        "quotes": [
-          "worker job always alert you please join us"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A new function `subscribeForJobAlerts()` (or equivalent) is available on the backend actor",
-        "Calling the function records the caller's principal and subscription timestamp in stable storage",
-        "A query function `getJobAlertSubscribers()` is available for admin use to list subscribed principals",
-        "Duplicate subscriptions from the same principal are handled gracefully (e.g., upsert)"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Wire the 'Join Us' button on the Job Board empty-state panel to call the backend job alert subscription function. After a successful subscription, display a success message such as 'You're on the list! We'll alert you when new jobs are posted.' and disable or update the button to prevent duplicate submissions.",
+      "text": "Add a 'Contact Number' input field to the Book Service form (Services.tsx). This field should allow users to provide a phone/contact number when submitting a service booking request.",
       "target": "both",
       "source": {
         "messageIds": [
           "msg-4"
         ],
         "quotes": [
-          "join us worker job always alert you please join us"
+          "contact number option add book service"
         ]
       },
       "acceptanceCriteria": [
-        "Clicking 'Join Us' triggers a backend call to subscribe the worker for job alerts",
-        "A success confirmation message is shown after successful subscription",
-        "The 'Join Us' button is disabled or changed to a 'Subscribed' state after successful submission",
-        "If the worker is not authenticated, prompt them to log in before subscribing",
-        "Loading and error states are handled gracefully"
+        "The Book Service form includes a clearly labeled 'Contact Number' input field.",
+        "The contact number field accepts numeric and standard phone number characters.",
+        "The contact number value is submitted along with the rest of the work order data.",
+        "The backend WorkOrder data type is updated to include an optional or required contactNumber field.",
+        "The contact number is stored and retrievable via the backend.",
+        "The contact number is visible in the admin Work Orders view for each booking."
       ]
     }
   ],
   "constraints": [
-    "Do not break existing job application tracking (applied/accepted/declined states stored in localStorage and backend must remain intact)",
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
-    "All Motoko logic must remain in the single backend/main.mo actor file"
+    "Do not modify files listed in frontend.immutablePaths.",
+    "Keep all Motoko logic within the single main actor in backend/main.mo."
   ],
   "nonGoals": [
-    "Actual push notification or email alert delivery to workers (only storing subscription intent)",
-    "Admin UI for managing or broadcasting to job alert subscribers (only backend storage is required)",
-    "Changing the existing work order creation or assignment logic",
-    "Adding new service types"
+    "Do not change any other fields or steps in the Book Service flow beyond adding the contact number.",
+    "Do not add phone verification or SMS functionality.",
+    "Do not alter the admin Work Orders assignment or status update logic."
   ],
   "imageRequirements": {
     "required": [],

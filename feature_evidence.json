@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-simplify-the-job-application-process-on-the-job-board-page-so-workers-can-apply-to-a-job-with-minimal-steps-reduce-the-multi-step-application-dialog-to-a-single-click-or-single-step-confirmation-e-g-one-apply-now-button-with-a-brief-confirmation-prompt-removing-unnecessary-intermediate-steps-while-still-recording-the-application-in-the-backend",
-      "featureTitle": "Simplify the job application process on the Job Board page so workers can apply to a job with minimal steps — reduce the multi-step application dialog to a single-click or single-step confirmation (e.g., one 'Apply Now' button with a brief confirmation prompt), removing unnecessary intermediate steps while still recording the application in the backend.",
+      "featureId": "feature-remove-the-actor-not-available-alert-or-any-similar-error-warning-dialog-that-appears-when-a-user-attempts-to-use-the-book-service-option-the-book-service-flow-should-remain-accessible-and-functional-without-showing-this-blocking-alert",
+      "featureTitle": "Remove the 'actor not available' alert (or any similar error/warning dialog) that appears when a user attempts to use the Book Service option. The Book Service flow should remain accessible and functional without showing this blocking alert.",
       "files": [
-        "frontend/src/pages/JobBoard.tsx"
+        "frontend/src/pages/Services.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -22,10 +22,12 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-when-there-are-no-available-open-jobs-on-the-job-board-empty-state-display-a-prominent-join-us-panel-that-encourages-workers-to-sign-up-for-job-alerts-the-panel-should-include-a-friendly-message-such-as-no-jobs-available-right-now-join-our-worker-network-and-we-ll-alert-you-when-new-jobs-are-posted-a-join-us-call-to-action-button-and-a-secondary-note-reassuring-workers-that-they-ll-be-notified-when-jobs-become-available",
-      "featureTitle": "When there are no available/open jobs on the Job Board (empty state), display a prominent 'Join Us' panel that encourages workers to sign up for job alerts. The panel should include a friendly message such as 'No jobs available right now — Join our worker network and we'll alert you when new jobs are posted!', a 'Join Us' call-to-action button, and a secondary note reassuring workers that they'll be notified when jobs become available.",
+      "featureId": "feature-add-a-contact-number-input-field-to-the-book-service-form-services-tsx-this-field-should-allow-users-to-provide-a-phone-contact-number-when-submitting-a-service-booking-request",
+      "featureTitle": "Add a 'Contact Number' input field to the Book Service form (Services.tsx). This field should allow users to provide a phone/contact number when submitting a service booking request.",
       "files": [
-        "frontend/src/pages/JobBoard.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/Services.tsx",
+        "frontend/src/pages/WorkOrders.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -38,27 +40,6 @@
       ],
       "testIds": [
         "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-wire-the-join-us-button-on-the-job-board-empty-state-panel-to-call-the-backend-job-alert-subscription-function-after-a-successful-subscription-display-a-success-message-such-as-you-re-on-the-list-we-ll-alert-you-when-new-jobs-are-posted-and-disable-or-update-the-button-to-prevent-duplicate-submissions",
-      "featureTitle": "Wire the 'Join Us' button on the Job Board empty-state panel to call the backend job alert subscription function. After a successful subscription, display a success message such as 'You're on the list! We'll alert you when new jobs are posted.' and disable or update the button to prevent duplicate submissions.",
-      "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/JobBoard.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
       ],
       "confidence": "high"
     }

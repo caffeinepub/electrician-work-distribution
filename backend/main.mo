@@ -69,6 +69,22 @@ actor {
     #partTime;
   };
 
+  public type ElectricianQualification = {
+    #itiElectrician;
+    #electronicElectricalEngineering;
+    #eeeDiploma;
+  };
+
+  module ElectricianQualification {
+    public func toText(q : ElectricianQualification) : Text {
+      switch (q) {
+        case (#itiElectrician) { "ITI Electrician" };
+        case (#electronicElectricalEngineering) { "Electronic Electrical Engineering" };
+        case (#eeeDiploma) { "EEE Diploma" };
+      };
+    };
+  };
+
   public type RepairServiceType = {
     #electronicRepair;
     #acTechnician;
@@ -93,6 +109,7 @@ actor {
     specialist : Speciality;
     isAvailable : Bool;
     workAvailability : WorkAvailability;
+    qualification : ElectricianQualification;
     email : Text;
     address : Text;
     hourlyRate : Nat;
@@ -177,16 +194,17 @@ actor {
     priority : Nat;
     status : WorkOrderStatus;
     applicationStatus : ApplicationProcessStatus;
-    issuedElectrician : Nat;
+    issuedElectrician : ?Nat; // Nullable for unassigned bookings!
     createdAt : Time.Time;
     customerEmail : Text;
     customerAddress : Text;
+    customerContactNumber : Text;
     paymentAmount : Nat;
     paymentStatus : PaymentStatus;
     paymentMethod : Text;
     workerRating : ?Rating;
     customerRating : ?Rating;
-    preferredEducation : Text;
+    preferredEducation : ElectricianQualification;
   };
 
   module WorkOrder {
@@ -208,9 +226,10 @@ actor {
     subscribedAt : Time.Time;
   };
 
+  // Requires authenticated user (not anonymous/guest)
   public shared ({ caller }) func subscribeToJobAlerts() : async () {
-    if (caller.isAnonymous()) {
-      Runtime.trap("Anonymous users cannot subscribe to job alerts. Please authenticate first.");
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can subscribe to job alerts. Please authenticate first.");
     };
     if (jobAlertSubscriptions.containsKey(caller)) {
       Runtime.trap("Caller is already subscribed to job alerts!");
@@ -222,7 +241,11 @@ actor {
     jobAlertSubscriptions.add(caller, subscription);
   };
 
+  // Requires authenticated user to check their own subscription status
   public query ({ caller }) func isSubscribedToJobAlerts() : async Bool {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can check subscription status");
+    };
     jobAlertSubscriptions.containsKey(caller);
   };
 
@@ -230,6 +253,7 @@ actor {
     subscribedAt : Time.Time;
   };
 
+  // Admin only: view all subscriptions
   public query ({ caller }) func getAllJobAlertSubscriptions() : async [PublicJobAlertSubscription] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can view all job alert subscriptions.");
@@ -245,10 +269,12 @@ actor {
     publicSubscriptions;
   };
 
+  // Admin only: add electrician
   public shared ({ caller }) func addElectrician(
     name : Text,
     specialist : Speciality,
     workAvailability : WorkAvailability,
+    qualification : ElectricianQualification,
     email : Text,
     address : Text,
     hourlyRate : Nat,
@@ -266,6 +292,7 @@ actor {
       specialist;
       isAvailable = true;
       workAvailability;
+      qualification;
       email;
       address;
       hourlyRate;
@@ -277,12 +304,14 @@ actor {
     id;
   };
 
+  // Admin only: update electrician
   public shared ({ caller }) func updateElectrician(
     id : Nat,
     name : ?Text,
     specialist : ?Speciality,
     isAvailable : ?Bool,
     workAvailability : ?WorkAvailability,
+    qualification : ?ElectricianQualification,
     email : ?Text,
     address : ?Text,
     hourlyRate : ?Nat,
@@ -313,6 +342,10 @@ actor {
             case (null) { electrician.workAvailability };
             case (?newAvailability) { newAvailability };
           };
+          qualification = switch (qualification) {
+            case (null) { electrician.qualification };
+            case (?newQualification) { newQualification };
+          };
           email = switch (email) {
             case (null) { electrician.email };
             case (?newEmail) { newEmail };
@@ -339,6 +372,7 @@ actor {
     };
   };
 
+  // Admin only: remove electrician
   public shared ({ caller }) func removeElectrician(id : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can remove electricians");
@@ -349,10 +383,12 @@ actor {
     openElectricians.remove(id);
   };
 
+  // Public: anyone can browse electricians (service marketplace)
   public query func getAllElectricians() : async [Electrician] {
     openElectricians.values().toArray().sort();
   };
 
+  // Public: anyone can view a specific electrician
   public query func findElectricianById(id : Nat) : async Electrician {
     switch (openElectricians.get(id)) {
       case (null) { Runtime.trap("Electrician not found") };
@@ -360,25 +396,23 @@ actor {
     };
   };
 
+  // User only: create a work order
   public shared ({ caller }) func createWorkOrder(
     title : Text,
     description : Text,
     location : Text,
     priority : Nat,
-    issuedElectrician : Nat,
+    issuedElectrician : ?Nat,
     customerEmail : Text,
     customerAddress : Text,
+    customerContactNumber : Text,
     paymentAmount : Nat,
     paymentMethod : Text,
-    preferredEducation : Text,
+    preferredEducation : ElectricianQualification,
   ) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create work orders");
     };
-    if (not openElectricians.containsKey(issuedElectrician)) {
-      Runtime.trap("Electrician not found");
-    };
-
     let id = nextWorkOrderId;
     let workOrder : WorkOrder = {
       id;
@@ -391,6 +425,7 @@ actor {
       createdAt = Time.now();
       customerEmail;
       customerAddress;
+      customerContactNumber;
       paymentAmount;
       paymentStatus = #pending;
       paymentMethod;
@@ -404,6 +439,7 @@ actor {
     id;
   };
 
+  // Admin only: update work order status
   public shared ({ caller }) func updateWorkOrderStatus(id : Nat, status : WorkOrderStatus) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can update work order status");
@@ -422,6 +458,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -435,6 +472,7 @@ actor {
     };
   };
 
+  // Admin only: assign electrician to work order
   public shared ({ caller }) func assignElectricianToWorkOrder(workOrderId : Nat, issuedElectrician : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can assign electricians to work orders");
@@ -453,10 +491,11 @@ actor {
           location = workOrder.location;
           priority = workOrder.priority;
           status = workOrder.status;
-          issuedElectrician;
+          issuedElectrician = ?issuedElectrician;
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -470,6 +509,7 @@ actor {
     };
   };
 
+  // Admin only: update payment details
   public shared ({ caller }) func updateWorkOrderPayment(id : Nat, paymentAmount : Nat, paymentMethod : Text, paymentStatus : PaymentStatus) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can update payment status");
@@ -488,6 +528,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount;
           paymentStatus;
           paymentMethod;
@@ -501,8 +542,9 @@ actor {
     };
   };
 
+  // User only: submit a worker rating
   public shared ({ caller }) func submitWorkerRating(workOrderId : Nat, rating : Nat, comment : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can submit ratings");
     };
     switch (openWorkOrders.get(workOrderId)) {
@@ -520,6 +562,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -533,8 +576,9 @@ actor {
     };
   };
 
+  // User only: submit a customer rating
   public shared ({ caller }) func submitCustomerRating(workOrderId : Nat, rating : Nat, comment : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can submit ratings");
     };
     switch (openWorkOrders.get(workOrderId)) {
@@ -552,6 +596,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -565,6 +610,7 @@ actor {
     };
   };
 
+  // Admin only: directly update application status
   public shared ({ caller }) func updateApplicationStatusForWorkOrder(workOrderId : Nat, newStatus : ApplicationProcessStatus) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can directly update application status");
@@ -583,6 +629,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -596,6 +643,7 @@ actor {
     };
   };
 
+  // User only: view all work orders
   public query ({ caller }) func getAllWorkOrders() : async [WorkOrder] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can view work orders");
@@ -603,6 +651,7 @@ actor {
     openWorkOrders.values().toArray().sort();
   };
 
+  // User only: view a specific work order
   public query ({ caller }) func findWorkOrderById(id : Nat) : async WorkOrder {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can view work order details");
@@ -613,6 +662,7 @@ actor {
     };
   };
 
+  // User only: view work orders by electrician
   public query ({ caller }) func getWorkOrdersByElectrician(electricianId : Nat) : async [WorkOrder] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can view work orders by electrician");
@@ -620,19 +670,24 @@ actor {
     let all = openWorkOrders.values().toArray();
     let filtered = all.filter(
       func(wo : WorkOrder) : Bool {
-        wo.issuedElectrician == electricianId and wo.status == #completed;
+        switch (wo.issuedElectrician) {
+          case (?id) { id == electricianId and wo.status == #completed };
+          case (null) { false };
+        };
       },
     );
     filtered.sort();
   };
 
+  // Public: anyone can view available services
   public query func getAvailableServices() : async [RepairServiceType] {
     [#electronicRepair, #acTechnician, #fridgeRepairWork, #electrician];
   };
 
+  // User only: get current user's own work orders
   public query ({ caller }) func getCurrentUserWorkOrders() : async [WorkOrder] {
-    if (caller.isAnonymous()) {
-      return [];
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only authenticated users can view their own work orders");
     };
 
     let allOrders = openWorkOrders.values().toArray();
@@ -649,6 +704,7 @@ actor {
     filtered.sort();
   };
 
+  // User only: view work orders by application status
   public query ({ caller }) func getWorkOrdersByApplicationStatus(status : ApplicationProcessStatus) : async [WorkOrder] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can view work orders by application status");
@@ -662,6 +718,7 @@ actor {
     filtered.sort();
   };
 
+  // User only: apply for a work order
   public shared ({ caller }) func applyForWorkOrder(workOrderId : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only workers can apply for work orders");
@@ -697,6 +754,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -710,6 +768,7 @@ actor {
     };
   };
 
+  // Admin only: verify a work order application
   public shared ({ caller }) func verifyWorkOrderApplication(workOrderId : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can verify work order applications");
@@ -735,6 +794,7 @@ actor {
               createdAt = workOrder.createdAt;
               customerEmail = workOrder.customerEmail;
               customerAddress = workOrder.customerAddress;
+              customerContactNumber = workOrder.customerContactNumber;
               paymentAmount = workOrder.paymentAmount;
               paymentStatus = workOrder.paymentStatus;
               paymentMethod = workOrder.paymentMethod;
@@ -750,6 +810,7 @@ actor {
     };
   };
 
+  // Admin only: accept (confirm) a work order assignment
   public shared ({ caller }) func acceptWorkOrder(workOrderId : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can confirm work order assignment");
@@ -771,6 +832,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -784,6 +846,7 @@ actor {
     };
   };
 
+  // Admin only: decline a work order application
   public shared ({ caller }) func declineWorkOrder(workOrderId : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can decline work order applications");
@@ -807,6 +870,7 @@ actor {
           createdAt = workOrder.createdAt;
           customerEmail = workOrder.customerEmail;
           customerAddress = workOrder.customerAddress;
+          customerContactNumber = workOrder.customerContactNumber;
           paymentAmount = workOrder.paymentAmount;
           paymentStatus = workOrder.paymentStatus;
           paymentMethod = workOrder.paymentMethod;
@@ -820,6 +884,7 @@ actor {
     };
   };
 
+  // Admin only: view a specific work order application
   public query ({ caller }) func getWorkOrderApplication(workOrderId : Nat) : async ?WorkOrderApplication {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
       Runtime.trap("Unauthorized: Only admins can view work order applications");

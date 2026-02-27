@@ -6,10 +6,10 @@ import {
   useUpdateElectrician,
   useRemoveElectrician,
 } from '../hooks/useQueries';
-import { Speciality, WorkAvailability } from '../backend';
+import { Speciality, WorkAvailability, ElectricianQualification } from '../backend';
 import type { Electrician } from '../backend';
-import { calculateElectricianRating } from '../lib/utils';
-import { RatingDisplay } from '../components/RatingDisplay';
+import { calculateElectricianRating, getQualificationLabel } from '../lib/utils';
+import RatingDisplay from '../components/RatingDisplay';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +45,7 @@ type ElectricianForm = {
   name: string;
   specialist: Speciality;
   workAvailability: WorkAvailability;
+  qualification: ElectricianQualification;
   email: string;
   address: string;
   hourlyRate: string;
@@ -56,6 +57,7 @@ const defaultForm: ElectricianForm = {
   name: '',
   specialist: Speciality.residential,
   workAvailability: WorkAvailability.fullTime,
+  qualification: ElectricianQualification.itiElectrician,
   email: '',
   address: '',
   hourlyRate: '',
@@ -74,18 +76,22 @@ export default function Electricians() {
   const [editTarget, setEditTarget] = useState<Electrician | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Electrician | null>(null);
   const [form, setForm] = useState<ElectricianForm>(defaultForm);
+  const [formError, setFormError] = useState('');
 
   const openAdd = () => {
     setForm(defaultForm);
+    setFormError('');
     setAddOpen(true);
   };
 
   const openEdit = (e: Electrician) => {
     setEditTarget(e);
+    setFormError('');
     setForm({
       name: e.name,
       specialist: e.specialist,
       workAvailability: e.workAvailability,
+      qualification: e.qualification,
       email: e.email,
       address: e.address,
       hourlyRate: e.hourlyRate.toString(),
@@ -94,12 +100,27 @@ export default function Electricians() {
     });
   };
 
+  const validateForm = (): boolean => {
+    if (!form.name.trim()) {
+      setFormError('Name is required.');
+      return false;
+    }
+    if (!form.qualification) {
+      setFormError('Qualification is required.');
+      return false;
+    }
+    setFormError('');
+    return true;
+  };
+
   const handleAdd = async () => {
+    if (!validateForm()) return;
     try {
       await addElectrician.mutateAsync({
         name: form.name,
         specialist: form.specialist,
         workAvailability: form.workAvailability,
+        qualification: form.qualification,
         email: form.email,
         address: form.address,
         hourlyRate: BigInt(Math.round(parseFloat(form.hourlyRate) || 0)),
@@ -115,6 +136,7 @@ export default function Electricians() {
 
   const handleEdit = async () => {
     if (!editTarget) return;
+    if (!validateForm()) return;
     try {
       await updateElectrician.mutateAsync({
         id: editTarget.id,
@@ -122,6 +144,7 @@ export default function Electricians() {
         specialist: form.specialist,
         isAvailable: undefined,
         workAvailability: form.workAvailability,
+        qualification: form.qualification,
         email: form.email,
         address: form.address,
         hourlyRate: BigInt(Math.round(parseFloat(form.hourlyRate) || 0)),
@@ -169,7 +192,7 @@ export default function Electricians() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {electricians.map((e) => {
-          const { averageRating, ratingCount } = calculateElectricianRating(workOrders, e.id);
+          const { avg, count } = calculateElectricianRating(e.id, workOrders);
           return (
             <div key={e.id.toString()} className="bg-card border border-border rounded-sm p-4 space-y-3">
               <div className="flex items-start justify-between">
@@ -193,13 +216,16 @@ export default function Electricians() {
                 <p>Rate: {e.currency}{Number(e.hourlyRate)}/hr</p>
                 <p>Payment: {e.paymentMethod}</p>
                 <p>Availability: {e.workAvailability === WorkAvailability.fullTime ? 'Full Time' : 'Part Time'}</p>
+                <p className="font-medium text-foreground/70">
+                  Qualification: <span className="text-primary">{getQualificationLabel(e.qualification)}</span>
+                </p>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className={`text-xs px-2 py-1 rounded-full ${e.isAvailable ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                   {e.isAvailable ? 'Available' : 'Unavailable'}
                 </span>
-                <RatingDisplay rating={averageRating} count={ratingCount} size="sm" />
+                <RatingDisplay rating={avg} count={count} size="sm" />
               </div>
             </div>
           );
@@ -212,13 +238,13 @@ export default function Electricians() {
       </div>
 
       {/* Add Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setFormError(''); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add Electrician</DialogTitle>
             <DialogDescription>Fill in the details to add a new electrician.</DialogDescription>
           </DialogHeader>
-          <ElectricianFormFields form={form} setForm={setForm} />
+          <ElectricianFormFields form={form} setForm={setForm} error={formError} />
           <DialogFooter>
             <Button onClick={handleAdd} disabled={addElectrician.isPending}>
               {addElectrician.isPending ? 'Adding...' : 'Add'}
@@ -228,13 +254,13 @@ export default function Electricians() {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+      <Dialog open={!!editTarget} onOpenChange={(open) => { if (!open) { setEditTarget(null); setFormError(''); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Electrician</DialogTitle>
             <DialogDescription>{editTarget?.name}</DialogDescription>
           </DialogHeader>
-          <ElectricianFormFields form={form} setForm={setForm} />
+          <ElectricianFormFields form={form} setForm={setForm} error={formError} />
           <DialogFooter>
             <Button onClick={handleEdit} disabled={updateElectrician.isPending}>
               {updateElectrician.isPending ? 'Saving...' : 'Save'}
@@ -270,9 +296,11 @@ export default function Electricians() {
 function ElectricianFormFields({
   form,
   setForm,
+  error,
 }: {
   form: ElectricianForm;
   setForm: React.Dispatch<React.SetStateAction<ElectricianForm>>;
+  error?: string;
 }) {
   const update = (key: keyof ElectricianForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -280,7 +308,7 @@ function ElectricianFormFields({
   return (
     <div className="space-y-3 py-2">
       <div className="space-y-1">
-        <Label>Name</Label>
+        <Label>Name <span className="text-destructive">*</span></Label>
         <Input value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Full name" required />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -307,27 +335,41 @@ function ElectricianFormFields({
         </div>
       </div>
       <div className="space-y-1">
+        <Label>Qualification <span className="text-destructive">*</span></Label>
+        <Select value={form.qualification} onValueChange={(v) => update('qualification', v)}>
+          <SelectTrigger><SelectValue placeholder="Select qualification" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ElectricianQualification.itiElectrician}>ITI Electrician</SelectItem>
+            <SelectItem value={ElectricianQualification.electronicElectricalEngineering}>Electronic Electrical Engineering</SelectItem>
+            <SelectItem value={ElectricianQualification.eeeDiploma}>EEE Diploma</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1">
         <Label>Email</Label>
         <Input type="email" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="email@example.com" />
       </div>
       <div className="space-y-1">
         <Label>Address</Label>
-        <Input value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="Address" />
+        <Input value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="Street address" />
       </div>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label>Hourly Rate</Label>
+          <Input type="number" min="0" value={form.hourlyRate} onChange={(e) => update('hourlyRate', e.target.value)} placeholder="0" />
+        </div>
         <div className="space-y-1">
           <Label>Currency</Label>
           <Input value={form.currency} onChange={(e) => update('currency', e.target.value)} placeholder="$" />
         </div>
-        <div className="space-y-1 col-span-2">
-          <Label>Hourly Rate</Label>
-          <Input type="number" min="0" value={form.hourlyRate} onChange={(e) => update('hourlyRate', e.target.value)} placeholder="0" />
-        </div>
       </div>
       <div className="space-y-1">
         <Label>Payment Method</Label>
-        <Input value={form.paymentMethod} onChange={(e) => update('paymentMethod', e.target.value)} placeholder="e.g. Cash, UPI" />
+        <Input value={form.paymentMethod} onChange={(e) => update('paymentMethod', e.target.value)} placeholder="e.g. cash, bank transfer" />
       </div>
+      {error && (
+        <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded px-3 py-2">{error}</p>
+      )}
     </div>
   );
 }

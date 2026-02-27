@@ -26,7 +26,11 @@ export interface Electrician {
   'email' : string,
   'currency' : string,
   'address' : string,
+  'qualification' : ElectricianQualification,
 }
+export type ElectricianQualification = { 'eeeDiploma' : null } |
+  { 'electronicElectricalEngineering' : null } |
+  { 'itiElectrician' : null };
 export type PaymentStatus = { 'pending' : null } |
   { 'paid' : null };
 export interface PublicJobAlertSubscription { 'subscribedAt' : Time }
@@ -54,11 +58,12 @@ export interface WorkOrder {
   'workerRating' : [] | [Rating],
   'createdAt' : Time,
   'customerRating' : [] | [Rating],
-  'preferredEducation' : string,
+  'preferredEducation' : ElectricianQualification,
   'description' : string,
   'applicationStatus' : ApplicationProcessStatus,
   'customerAddress' : string,
-  'issuedElectrician' : bigint,
+  'issuedElectrician' : [] | [bigint],
+  'customerContactNumber' : string,
   'priority' : bigint,
   'customerEmail' : string,
   'paymentAmount' : bigint,
@@ -107,6 +112,7 @@ export interface _SERVICE {
       string,
       Speciality,
       WorkAvailability,
+      ElectricianQualification,
       string,
       string,
       bigint,
@@ -124,12 +130,13 @@ export interface _SERVICE {
       string,
       string,
       bigint,
+      [] | [bigint],
+      string,
+      string,
+      string,
       bigint,
       string,
-      string,
-      bigint,
-      string,
-      string,
+      ElectricianQualification,
     ],
     bigint
   >,
@@ -174,6 +181,7 @@ export interface _SERVICE {
       [] | [Speciality],
       [] | [boolean],
       [] | [WorkAvailability],
+      [] | [ElectricianQualification],
       [] | [string],
       [] | [string],
       [] | [bigint],
