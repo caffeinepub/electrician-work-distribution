@@ -1,16 +1,48 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
+  "summary": "App project with admin portal feature being developed. User requested an admin portal with verification options.",
   "architectural_notes": [],
   "known_issues": [],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-in-the-work-orders-page-frontend-src-pages-workorders-tsx-move-the-work-order-navigation-or-tab-option-so-that-it-appears-under-the-verify-application-section-instead-of-being-grouped-under-the-verify-section-ensure-the-ui-reflects-this-hierarchy-clearly-and-the-option-functions-correctly-in-its-new-location",
-      "title": "In the Work Orders page (frontend/src/pages/WorkOrders.tsx), move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section. Ensure the UI reflects this hierarchy clearly and the option functions correctly in its new location.",
+      "id": "feature-add-a-dedicated-admin-portal-section-accessible-via-the-sidebar-navigation-visible-only-to-authenticated-admin-users-with-a-clear-admin-portal-label-and-sub-navigation-links-for-dashboard-work-orders-electricians-payments-and-a-new-verifications-section",
+      "title": "Add a dedicated Admin Portal section accessible via the sidebar navigation (visible only to authenticated admin users), with a clear 'Admin Portal' label and sub-navigation links for Dashboard, Work Orders, Electricians, Payments, and a new Verifications section.",
       "reqIds": [
         "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-admin-routes-in-the-router-for-admin-dashboard-admin-work-orders-admin-electricians-admin-payments-and-admin-verifications-each-wrapped-in-protectedroute-with-admin-only-enforcement",
+      "title": "Add admin routes in the router for /admin/dashboard, /admin/work-orders, /admin/electricians, /admin/payments, and /admin/verifications, each wrapped in ProtectedRoute with admin-only enforcement.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-verifications-admin-page-admin-verifications-that-lists-all-pending-verification-items-in-tabbed-sections-1-new-work-order-requests-verify-and-approve-or-reject-incoming-work-orders-before-they-become-active-2-electrician-profile-verifications-verify-electrician-credentials-documents-and-approve-or-reject-their-profiles-3-job-applications-verify-and-approve-or-reject-applications-submitted-by-workers-on-open-work-orders-4-payment-verifications-verify-payment-records-and-mark-them-as-confirmed-or-flag-for-review",
+      "title": "Create a Verifications admin page (/admin/verifications) that lists all pending verification items in tabbed sections: (1) New Work Order Requests — verify and approve or reject incoming work orders before they become active; (2) Electrician Profile Verifications — verify electrician credentials/documents and approve or reject their profiles; (3) Job Applications — verify and approve or reject applications submitted by workers on open work orders; (4) Payment Verifications — verify payment records and mark them as confirmed or flag for review.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-tanstack-query-hooks-for-all-new-verification-backend-functions-in-usequeries-ts-query-hooks-to-fetch-pending-work-orders-pending-electrician-profiles-pending-job-applications-and-pending-payments-mutation-hooks-for-all-approve-reject-flag-actions-with-cache-invalidation-on-success",
+      "title": "Add TanStack Query hooks for all new verification backend functions in useQueries.ts: query hooks to fetch pending work orders, pending electrician profiles, pending job applications, and pending payments; mutation hooks for all approve/reject/flag actions with cache invalidation on success.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-all-admin-portal-page-transitions-tab-switches-modal-dialogs-and-approve-reject-actions-use-smooth-animations-fade-in-for-pages-via-pagetransition-animated-tab-underlines-and-subtle-button-press-feedback-consistent-with-the-existing-dark-themed-design-system",
+      "title": "Ensure all admin portal page transitions, tab switches, modal dialogs, and approve/reject actions use smooth animations (fade-in for pages via PageTransition, animated tab underlines, and subtle button press feedback) consistent with the existing dark-themed design system.",
+      "reqIds": [
+        "REQ-6"
       ],
       "version": 1
     }
@@ -18,12 +50,21 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Move 'work order' option in the application to be under 'verify application' section, not 'verify'",
+      "summary": "Add admin portal with all verification options, working smoothly",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Add backend functions to support verification workflows: approveWorkOrder(id), rejectWorkOrder(id, reason), approveElectrician(id), rejectElectrician(id, reason), approveJobApplication(workOrderId, applicantId), rejectJobApplication(workOrderId, applicantId, reason), approvePayment(workOrderId), and flagPayment(workOrderId, note). All functions must be admin-only and update the relevant record status.",
+      "reqIds": [
+        "REQ-4"
+      ],
       "status": "pending"
     }
   ],
-  "projectName": "Move 'Work Order' option under 'Verify Application' section in Work Orders page",
+  "gameProjectType": "none",
+  "projectName": "Technical Tech",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

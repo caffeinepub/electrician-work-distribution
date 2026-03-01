@@ -1,35 +1,138 @@
 {
   "kind": "build_request",
-  "title": "Move 'Work Order' option under 'Verify Application' section in Work Orders page",
-  "priority": "normal",
+  "title": "Add Admin Portal with Full Verification Options",
+  "projectName": "Technical Tech",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "In the Work Orders page (frontend/src/pages/WorkOrders.tsx), move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section. Ensure the UI reflects this hierarchy clearly and the option functions correctly in its new location.",
+      "text": "Add a dedicated Admin Portal section accessible via the sidebar navigation (visible only to authenticated admin users), with a clear 'Admin Portal' label and sub-navigation links for Dashboard, Work Orders, Electricians, Payments, and a new Verifications section.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-8"
         ],
         "quotes": [
-          "work order option in verify application not verify"
+          "please add admin portal and all verify option you suggestion add with smooth work"
         ]
       },
       "acceptanceCriteria": [
-        "The 'Work Order' option is no longer displayed under the 'Verify' section/tab/group.",
-        "The 'Work Order' option is now visible and accessible under the 'Verify Application' section/tab/group.",
-        "Clicking the 'Work Order' option under 'Verify Application' correctly navigates to or displays the work order content.",
-        "All other sections and options remain unaffected."
+        "Sidebar shows an 'Admin Portal' group with links: Dashboard, Work Orders, Electricians, Payments, Verifications",
+        "Admin Portal links are only visible/accessible to users who pass the admin check (useIsAdmin query)",
+        "Non-admin users see an 'Access Denied' message if they navigate to any admin route directly"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add admin routes in the router for /admin/dashboard, /admin/work-orders, /admin/electricians, /admin/payments, and /admin/verifications, each wrapped in ProtectedRoute with admin-only enforcement.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-8"
+        ],
+        "quotes": [
+          "please add admin portal and all verify option you suggestion add with smooth work"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All /admin/* routes redirect unauthenticated users to a login prompt",
+        "All /admin/* routes show 'Access Denied' for authenticated non-admin users",
+        "Each route renders its corresponding admin page component"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Create a Verifications admin page (/admin/verifications) that lists all pending verification items in tabbed sections: (1) New Work Order Requests — verify and approve or reject incoming work orders before they become active; (2) Electrician Profile Verifications — verify electrician credentials/documents and approve or reject their profiles; (3) Job Applications — verify and approve or reject applications submitted by workers on open work orders; (4) Payment Verifications — verify payment records and mark them as confirmed or flag for review.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-8"
+        ],
+        "quotes": [
+          "all verify option you suggestion add with smooth work"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Page displays four tabs: Work Order Requests, Electrician Profiles, Job Applications, Payment Verifications",
+        "Each tab shows a list of items with status badge, key details, and Approve/Reject action buttons",
+        "Approve/Reject actions call the appropriate backend mutations and show a toast on success or failure",
+        "Counts of pending items are shown on each tab label",
+        "Empty state message is shown when there are no pending items in a tab"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add backend functions to support verification workflows: approveWorkOrder(id), rejectWorkOrder(id, reason), approveElectrician(id), rejectElectrician(id, reason), approveJobApplication(workOrderId, applicantId), rejectJobApplication(workOrderId, applicantId, reason), approvePayment(workOrderId), and flagPayment(workOrderId, note). All functions must be admin-only and update the relevant record status.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-8"
+        ],
+        "quotes": [
+          "all verify option you suggestion add with smooth work"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Each function checks caller is admin and returns an error if not",
+        "approveWorkOrder sets the work order status to Open/active",
+        "rejectWorkOrder sets the work order status to Cancelled and stores the rejection reason",
+        "approveElectrician marks the electrician profile as verified",
+        "rejectElectrician marks the electrician profile as rejected with a reason",
+        "approveJobApplication marks the application as accepted",
+        "rejectJobApplication marks the application as rejected with a reason",
+        "approvePayment marks the payment as Paid/confirmed",
+        "flagPayment marks the payment as flagged with a note"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add TanStack Query hooks for all new verification backend functions in useQueries.ts: query hooks to fetch pending work orders, pending electrician profiles, pending job applications, and pending payments; mutation hooks for all approve/reject/flag actions with cache invalidation on success.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-8"
+        ],
+        "quotes": [
+          "all verify option you suggestion add with smooth work"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All new query hooks return loading, error, and data states",
+        "All new mutation hooks invalidate relevant caches on success",
+        "Hooks are exported from useQueries.ts and usable in the Verifications page"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Ensure all admin portal page transitions, tab switches, modal dialogs, and approve/reject actions use smooth animations (fade-in for pages via PageTransition, animated tab underlines, and subtle button press feedback) consistent with the existing dark-themed design system.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-8"
+        ],
+        "quotes": [
+          "smooth work"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All admin pages are wrapped in PageTransition for fade-in on route change",
+        "Tab switching in Verifications page uses a smooth animated indicator",
+        "Approve and Reject buttons show a brief loading spinner while the mutation is in flight",
+        "Success and error toasts appear with slide-in animation after each action"
       ]
     }
   ],
   "constraints": [
-    "Do not modify any files under frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui."
+    "All admin routes must be protected using the existing ProtectedRoute component with adminOnly flag",
+    "Do not modify files in frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, or frontend/src/components/ui",
+    "All backend changes must remain in the single main actor file (backend/main.mo)",
+    "Maintain existing dark-themed OKLCH color system and Tailwind design tokens"
   ],
   "nonGoals": [
-    "Changing backend logic or data models.",
-    "Modifying any other page or component outside of WorkOrders.tsx.",
-    "Adding new work order features or changing existing work order functionality."
+    "Adding a separate authentication system — Internet Identity remains the only auth method",
+    "Building a public-facing admin registration flow",
+    "Email or SMS notifications for verification outcomes",
+    "Real-time updates or WebSocket-based notifications"
   ],
   "imageRequirements": {
     "required": [],

@@ -15,6 +15,12 @@ export type ApplicationProcessStatus = { 'cancelled' : null } |
   { 'verifiedPendingAssignment' : null } |
   { 'accepted' : null } |
   { 'declined' : null };
+export interface ChecklistItem {
+  'id' : string,
+  'order' : bigint,
+  'completed' : boolean,
+  'taskLabel' : string,
+}
 export interface Electrician {
   'id' : bigint,
   'paymentMethod' : string,
@@ -27,18 +33,23 @@ export interface Electrician {
   'currency' : string,
   'address' : string,
   'qualification' : ElectricianQualification,
+  'verificationStatus' : VerificationStatus,
 }
 export type ElectricianQualification = { 'eeeDiploma' : null } |
   { 'electronicElectricalEngineering' : null } |
   { 'itiElectrician' : null };
 export type PaymentStatus = { 'pending' : null } |
-  { 'paid' : null };
+  { 'paid' : null } |
+  { 'confirmed' : null } |
+  { 'flagged' : string };
 export interface PublicJobAlertSubscription { 'subscribedAt' : Time }
 export interface Rating { 'comment' : string, 'rating' : bigint }
 export type RepairServiceType = { 'electronicRepair' : null } |
   { 'electrician' : null } |
   { 'fridgeRepairWork' : null } |
   { 'acTechnician' : null };
+export type Result = { 'ok' : null } |
+  { 'err' : string };
 export type Speciality = { 'commercial' : null } |
   { 'residential' : null } |
   { 'industrial' : null };
@@ -47,6 +58,10 @@ export interface UserProfile { 'name' : string, 'email' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export type VerificationStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'verifiedPendingAssignment' : null } |
+  { 'rejected' : string };
 export type WorkAvailability = { 'partTime' : null } |
   { 'fullTime' : null };
 export interface WorkOrder {
@@ -68,6 +83,7 @@ export interface WorkOrder {
   'customerEmail' : string,
   'paymentAmount' : bigint,
   'location' : string,
+  'verificationStatus' : VerificationStatus,
 }
 export interface WorkOrderApplication {
   'applicant' : Principal,
@@ -122,8 +138,26 @@ export interface _SERVICE {
     bigint
   >,
   'applyForWorkOrder' : ActorMethod<[bigint], undefined>,
+  'approveElectrician' : ActorMethod<[bigint], undefined>,
+  'approveJobApplication' : ActorMethod<[bigint, Principal], undefined>,
+  'approvePayment' : ActorMethod<[bigint], undefined>,
+  'approveWorkOrder' : ActorMethod<[bigint], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignElectricianToWorkOrder' : ActorMethod<[bigint, bigint], undefined>,
+  'createFixedPriceWorkOrder' : ActorMethod<
+    [
+      string,
+      string,
+      string,
+      bigint,
+      string,
+      string,
+      string,
+      string,
+      ElectricianQualification,
+    ],
+    bigint
+  >,
   'createWorkOrder' : ActorMethod<
     [
       string,
@@ -143,6 +177,7 @@ export interface _SERVICE {
   'declineWorkOrder' : ActorMethod<[bigint], undefined>,
   'findElectricianById' : ActorMethod<[bigint], Electrician>,
   'findWorkOrderById' : ActorMethod<[bigint], WorkOrder>,
+  'flagPayment' : ActorMethod<[bigint, string], undefined>,
   'getAllElectricians' : ActorMethod<[], Array<Electrician>>,
   'getAllJobAlertSubscriptions' : ActorMethod<
     [],
@@ -153,18 +188,31 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCurrentUserWorkOrders' : ActorMethod<[], Array<WorkOrder>>,
+  'getPendingElectricians' : ActorMethod<[], Array<Electrician>>,
+  'getPendingJobApplications' : ActorMethod<[], Array<WorkOrder>>,
+  'getPendingPayments' : ActorMethod<[], Array<WorkOrder>>,
+  'getPendingWorkOrders' : ActorMethod<[], Array<WorkOrder>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getVerifiedApplications' : ActorMethod<[], Array<WorkOrder>>,
   'getWorkOrderApplication' : ActorMethod<
     [bigint],
     [] | [WorkOrderApplication]
+  >,
+  'getWorkOrderConfirmation' : ActorMethod<
+    [bigint],
+    { 'status' : WorkOrderStatus, 'workOrderId' : bigint }
   >,
   'getWorkOrdersByApplicationStatus' : ActorMethod<
     [ApplicationProcessStatus],
     Array<WorkOrder>
   >,
   'getWorkOrdersByElectrician' : ActorMethod<[bigint], Array<WorkOrder>>,
+  'getWorkerChecklist' : ActorMethod<[string], Array<ChecklistItem>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isSubscribedToJobAlerts' : ActorMethod<[], boolean>,
+  'rejectElectrician' : ActorMethod<[bigint, string], undefined>,
+  'rejectJobApplication' : ActorMethod<[bigint, Principal, string], undefined>,
+  'rejectWorkOrder' : ActorMethod<[bigint, string], undefined>,
   'removeElectrician' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'submitCustomerRating' : ActorMethod<[bigint, bigint, string], undefined>,
@@ -174,6 +222,7 @@ export interface _SERVICE {
     [bigint, ApplicationProcessStatus],
     undefined
   >,
+  'updateChecklistItem' : ActorMethod<[string, string, boolean], Result>,
   'updateElectrician' : ActorMethod<
     [
       bigint,
@@ -195,7 +244,8 @@ export interface _SERVICE {
     undefined
   >,
   'updateWorkOrderStatus' : ActorMethod<[bigint, WorkOrderStatus], undefined>,
-  'verifyWorkOrderApplication' : ActorMethod<[bigint], undefined>,
+  'verifyAndMoveToQueue' : ActorMethod<[bigint], undefined>,
+  'verifyApplication' : ActorMethod<[bigint], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

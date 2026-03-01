@@ -1,11 +1,17 @@
 import { lazy, Suspense } from 'react';
-import { createRootRoute, createRoute, createRouter, RouterProvider, Outlet } from '@tanstack/react-router';
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  RouterProvider,
+  Outlet,
+} from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
 import Layout from './components/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
 import LoadingFallback from './components/LoadingFallback';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const Services = lazy(() => import('./pages/Services'));
@@ -15,16 +21,18 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const WorkOrders = lazy(() => import('./pages/WorkOrders'));
 const Electricians = lazy(() => import('./pages/Electricians'));
 const Payments = lazy(() => import('./pages/Payments'));
+const Verifications = lazy(() => import('./pages/Verifications'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      staleTime: 1000 * 30,
       retry: 1,
-      staleTime: 30000,
     },
   },
 });
 
+// Root route with layout
 const rootRoute = createRootRoute({
   component: () => (
     <Layout>
@@ -33,7 +41,8 @@ const rootRoute = createRootRoute({
   ),
 });
 
-const indexRoute = createRoute({
+// Public routes
+const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => (
@@ -53,7 +62,7 @@ const servicesRoute = createRoute({
   ),
 });
 
-const jobsRoute = createRoute({
+const jobBoardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/jobs',
   component: () => (
@@ -73,14 +82,19 @@ const myBookingsRoute = createRoute({
   ),
 });
 
-const protectedRoute = createRoute({
+// Admin protected parent route
+const adminProtectedRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: 'protected',
-  component: ProtectedRoute,
+  path: '/admin',
+  component: () => (
+    <ProtectedRoute adminOnly={true}>
+      <Outlet />
+    </ProtectedRoute>
+  ),
 });
 
-const dashboardRoute = createRoute({
-  getParentRoute: () => protectedRoute,
+const adminDashboardRoute = createRoute({
+  getParentRoute: () => adminProtectedRoute,
   path: '/dashboard',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
@@ -89,8 +103,8 @@ const dashboardRoute = createRoute({
   ),
 });
 
-const workOrdersRoute = createRoute({
-  getParentRoute: () => protectedRoute,
+const adminWorkOrdersRoute = createRoute({
+  getParentRoute: () => adminProtectedRoute,
   path: '/work-orders',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
@@ -99,8 +113,8 @@ const workOrdersRoute = createRoute({
   ),
 });
 
-const electriciansRoute = createRoute({
-  getParentRoute: () => protectedRoute,
+const adminElectriciansRoute = createRoute({
+  getParentRoute: () => adminProtectedRoute,
   path: '/electricians',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
@@ -109,8 +123,8 @@ const electriciansRoute = createRoute({
   ),
 });
 
-const paymentsRoute = createRoute({
-  getParentRoute: () => protectedRoute,
+const adminPaymentsRoute = createRoute({
+  getParentRoute: () => adminProtectedRoute,
   path: '/payments',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
@@ -119,16 +133,27 @@ const paymentsRoute = createRoute({
   ),
 });
 
+const adminVerificationsRoute = createRoute({
+  getParentRoute: () => adminProtectedRoute,
+  path: '/verifications',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <Verifications />
+    </Suspense>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  landingRoute,
   servicesRoute,
-  jobsRoute,
+  jobBoardRoute,
   myBookingsRoute,
-  protectedRoute.addChildren([
-    dashboardRoute,
-    workOrdersRoute,
-    electriciansRoute,
-    paymentsRoute,
+  adminProtectedRoute.addChildren([
+    adminDashboardRoute,
+    adminWorkOrdersRoute,
+    adminElectriciansRoute,
+    adminPaymentsRoute,
+    adminVerificationsRoute,
   ]),
 ]);
 
@@ -145,7 +170,7 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
-        <Toaster />
+        <Toaster richColors position="top-right" />
       </QueryClientProvider>
     </ThemeProvider>
   );

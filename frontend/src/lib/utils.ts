@@ -49,17 +49,21 @@ export function getStatusClass(status: WorkOrderStatus): string {
 }
 
 export function getPaymentStatusLabel(status: PaymentStatus): string {
-  switch (status) {
-    case PaymentStatus.paid: return 'Paid';
-    case PaymentStatus.pending: return 'Pending';
-    default: return String(status);
+  switch (status.__kind__) {
+    case 'paid': return 'Paid';
+    case 'confirmed': return 'Confirmed';
+    case 'flagged': return `Flagged`;
+    case 'pending':
+    default: return 'Pending';
   }
 }
 
 export function getPaymentStatusClass(status: PaymentStatus): string {
-  switch (status) {
-    case PaymentStatus.paid: return 'badge-paid';
-    case PaymentStatus.pending: return 'badge-payment-pending';
+  switch (status.__kind__) {
+    case 'paid': return 'badge-paid';
+    case 'confirmed': return 'badge-paid';
+    case 'flagged': return 'badge-cancelled';
+    case 'pending':
     default: return 'badge-payment-pending';
   }
 }

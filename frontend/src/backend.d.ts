@@ -36,10 +36,31 @@ export interface WorkOrder {
     customerEmail: string;
     paymentAmount: bigint;
     location: string;
+    verificationStatus: VerificationStatus;
 }
 export interface PublicJobAlertSubscription {
     subscribedAt: Time;
 }
+export type VerificationStatus = {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "approved";
+    approved: null;
+} | {
+    __kind__: "verifiedPendingAssignment";
+    verifiedPendingAssignment: null;
+} | {
+    __kind__: "rejected";
+    rejected: string;
+};
+export type Result = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface Electrician {
     id: bigint;
     paymentMethod: string;
@@ -52,7 +73,27 @@ export interface Electrician {
     currency: string;
     address: string;
     qualification: ElectricianQualification;
+    verificationStatus: VerificationStatus;
 }
+export interface ChecklistItem {
+    id: string;
+    order: bigint;
+    completed: boolean;
+    taskLabel: string;
+}
+export type PaymentStatus = {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "paid";
+    paid: null;
+} | {
+    __kind__: "confirmed";
+    confirmed: null;
+} | {
+    __kind__: "flagged";
+    flagged: string;
+};
 export interface UserProfile {
     name: string;
     email: string;
@@ -68,10 +109,6 @@ export enum ElectricianQualification {
     eeeDiploma = "eeeDiploma",
     electronicElectricalEngineering = "electronicElectricalEngineering",
     itiElectrician = "itiElectrician"
-}
-export enum PaymentStatus {
-    pending = "pending",
-    paid = "paid"
 }
 export enum RepairServiceType {
     electronicRepair = "electronicRepair",
@@ -103,12 +140,18 @@ export interface backendInterface {
     acceptWorkOrder(workOrderId: bigint): Promise<void>;
     addElectrician(name: string, specialist: Speciality, workAvailability: WorkAvailability, qualification: ElectricianQualification, email: string, address: string, hourlyRate: bigint, currency: string, paymentMethod: string): Promise<bigint>;
     applyForWorkOrder(workOrderId: bigint): Promise<void>;
+    approveElectrician(id: bigint): Promise<void>;
+    approveJobApplication(workOrderId: bigint, applicantId: Principal): Promise<void>;
+    approvePayment(workOrderId: bigint): Promise<void>;
+    approveWorkOrder(id: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignElectricianToWorkOrder(workOrderId: bigint, issuedElectrician: bigint): Promise<void>;
+    createFixedPriceWorkOrder(title: string, description: string, location: string, priority: bigint, customerEmail: string, customerAddress: string, customerContactNumber: string, paymentMethod: string, preferredEducation: ElectricianQualification): Promise<bigint>;
     createWorkOrder(title: string, description: string, location: string, priority: bigint, issuedElectrician: bigint | null, customerEmail: string, customerAddress: string, customerContactNumber: string, paymentAmount: bigint, paymentMethod: string, preferredEducation: ElectricianQualification): Promise<bigint>;
     declineWorkOrder(workOrderId: bigint): Promise<void>;
     findElectricianById(id: bigint): Promise<Electrician>;
     findWorkOrderById(id: bigint): Promise<WorkOrder>;
+    flagPayment(workOrderId: bigint, note: string): Promise<void>;
     getAllElectricians(): Promise<Array<Electrician>>;
     getAllJobAlertSubscriptions(): Promise<Array<PublicJobAlertSubscription>>;
     getAllWorkOrders(): Promise<Array<WorkOrder>>;
@@ -116,20 +159,35 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCurrentUserWorkOrders(): Promise<Array<WorkOrder>>;
+    getPendingElectricians(): Promise<Array<Electrician>>;
+    getPendingJobApplications(): Promise<Array<WorkOrder>>;
+    getPendingPayments(): Promise<Array<WorkOrder>>;
+    getPendingWorkOrders(): Promise<Array<WorkOrder>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getVerifiedApplications(): Promise<Array<WorkOrder>>;
     getWorkOrderApplication(workOrderId: bigint): Promise<WorkOrderApplication | null>;
+    getWorkOrderConfirmation(workOrderId: bigint): Promise<{
+        status: WorkOrderStatus;
+        workOrderId: bigint;
+    }>;
     getWorkOrdersByApplicationStatus(status: ApplicationProcessStatus): Promise<Array<WorkOrder>>;
     getWorkOrdersByElectrician(electricianId: bigint): Promise<Array<WorkOrder>>;
+    getWorkerChecklist(workOrderId: string): Promise<Array<ChecklistItem>>;
     isCallerAdmin(): Promise<boolean>;
     isSubscribedToJobAlerts(): Promise<boolean>;
+    rejectElectrician(id: bigint, reason: string): Promise<void>;
+    rejectJobApplication(workOrderId: bigint, applicantId: Principal, reason: string): Promise<void>;
+    rejectWorkOrder(id: bigint, reason: string): Promise<void>;
     removeElectrician(id: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitCustomerRating(workOrderId: bigint, rating: bigint, comment: string): Promise<void>;
     submitWorkerRating(workOrderId: bigint, rating: bigint, comment: string): Promise<void>;
     subscribeToJobAlerts(): Promise<void>;
     updateApplicationStatusForWorkOrder(workOrderId: bigint, newStatus: ApplicationProcessStatus): Promise<void>;
+    updateChecklistItem(workOrderId: string, itemId: string, completed: boolean): Promise<Result>;
     updateElectrician(id: bigint, name: string | null, specialist: Speciality | null, isAvailable: boolean | null, workAvailability: WorkAvailability | null, qualification: ElectricianQualification | null, email: string | null, address: string | null, hourlyRate: bigint | null, currency: string | null, paymentMethod: string | null): Promise<void>;
     updateWorkOrderPayment(id: bigint, paymentAmount: bigint, paymentMethod: string, paymentStatus: PaymentStatus): Promise<void>;
     updateWorkOrderStatus(id: bigint, status: WorkOrderStatus): Promise<void>;
-    verifyWorkOrderApplication(workOrderId: bigint): Promise<void>;
+    verifyAndMoveToQueue(workOrderId: bigint): Promise<void>;
+    verifyApplication(workOrderId: bigint): Promise<void>;
 }

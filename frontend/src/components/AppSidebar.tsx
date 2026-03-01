@@ -1,121 +1,146 @@
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { useIsCallerAdmin } from '../hooks/useQueries';
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
-  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
-  Home,
-  Wrench,
-  Briefcase,
-  BookOpen,
   LayoutDashboard,
   ClipboardList,
   Users,
   CreditCard,
+  Wrench,
+  Briefcase,
+  BookOpen,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react';
 
 const portalLinks = [
-  { label: 'Home', path: '/', icon: Home },
-  { label: 'Services', path: '/services', icon: Wrench },
-  { label: 'Job Board', path: '/jobs', icon: Briefcase },
-  { label: 'My Bookings', path: '/my-bookings', icon: BookOpen },
+  { label: 'Services', href: '/services', icon: Wrench },
+  { label: 'Job Board', href: '/jobs', icon: Briefcase },
+  { label: 'My Bookings', href: '/my-bookings', icon: BookOpen },
 ];
 
 const adminLinks = [
-  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Work Orders', path: '/work-orders', icon: ClipboardList },
-  { label: 'Electricians', path: '/electricians', icon: Users },
-  { label: 'Payments', path: '/payments', icon: CreditCard },
+  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { label: 'Work Orders', href: '/admin/work-orders', icon: ClipboardList },
+  { label: 'Electricians', href: '/admin/electricians', icon: Users },
+  { label: 'Payments', href: '/admin/payments', icon: CreditCard },
+  { label: 'Verifications', href: '/admin/verifications', icon: ShieldCheck },
 ];
 
-export default function AppSidebar() {
-  const navigate = useNavigate();
-  const routerState = useRouterState();
-  const currentPath = routerState.location.pathname;
+function isActive(href: string): boolean {
+  return window.location.pathname === href || window.location.pathname.startsWith(href + '/');
+}
 
-  const isActive = (path: string) => {
-    if (path === '/') return currentPath === '/';
-    return currentPath.startsWith(path);
-  };
+export default function AppSidebar() {
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+  const { data: isCallerAdmin } = useIsCallerAdmin();
+
+  const showAdmin = isAuthenticated && isCallerAdmin === true;
 
   return (
-    <Sidebar className="sidebar-dark border-r border-sidebar-border">
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center justify-center">
-          <img
-            src="/assets/generated/electropro-logo.dim_300x80.png"
-            alt="ElectroPro"
-            className="h-10 w-auto object-contain"
-          />
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent className="py-2">
+    <Sidebar>
+      <SidebarContent>
+        {/* Branding */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-semibold uppercase tracking-wider px-4 py-2">
-            Portal
-          </SidebarGroupLabel>
+          <div className="flex items-center gap-2 px-2 py-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+              <Zap className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="text-base font-bold tracking-tight text-foreground">
+              Technical Tech
+            </span>
+          </div>
+        </SidebarGroup>
+
+        <SidebarSeparator />
+
+        {/* Portal Links */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Portal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {portalLinks.map((link) => (
-                <SidebarMenuItem key={link.path}>
-                  <SidebarMenuButton
-                    onClick={() => navigate({ to: link.path })}
-                    isActive={isActive(link.path)}
-                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors cursor-pointer
-                      ${isActive(link.path)
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                      }`}
-                  >
-                    <link.icon className="h-4 w-4 shrink-0" />
-                    <span>{link.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {portalLinks.map((link) => {
+                const Icon = link.icon;
+                const active = isActive(link.href);
+                return (
+                  <SidebarMenuItem key={link.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="transition-all duration-200"
+                    >
+                      <a href={link.href}>
+                        <Icon className="h-4 w-4" />
+                        <span>{link.label}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-4">
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs font-semibold uppercase tracking-wider px-4 py-2">
-            Admin
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminLinks.map((link) => (
-                <SidebarMenuItem key={link.path}>
-                  <SidebarMenuButton
-                    onClick={() => navigate({ to: link.path })}
-                    isActive={isActive(link.path)}
-                    className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors cursor-pointer
-                      ${isActive(link.path)
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                      }`}
-                  >
-                    <link.icon className="h-4 w-4 shrink-0" />
-                    <span>{link.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Admin Portal Links */}
+        {showAdmin && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel className="flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
+                <span className="text-amber-400">Admin Portal</span>
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminLinks.map((link) => {
+                    const Icon = link.icon;
+                    const active = isActive(link.href);
+                    return (
+                      <SidebarMenuItem key={link.href}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className="transition-all duration-200"
+                        >
+                          <a href={link.href}>
+                            <Icon className="h-4 w-4" />
+                            <span>{link.label}</span>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <p className="text-xs text-sidebar-foreground/40 text-center">
-          © {new Date().getFullYear()} Technical Tech
-        </p>
+      <SidebarFooter>
+        <div className="px-3 py-2 text-xs text-muted-foreground">
+          © {new Date().getFullYear()} Technical Tech.{' '}
+          <a
+            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
+            Built with ❤️ using caffeine.ai
+          </a>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

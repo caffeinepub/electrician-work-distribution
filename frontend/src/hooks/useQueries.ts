@@ -3,21 +3,28 @@ import { useActor } from './useActor';
 import {
   WorkOrder,
   Electrician,
-  UserProfile,
   ApplicationProcessStatus,
+  WorkOrderStatus,
   PaymentStatus,
+  ElectricianQualification,
   Speciality,
   WorkAvailability,
-  WorkOrderStatus,
-  ElectricianQualification,
 } from '../backend';
+import { Principal } from '@dfinity/principal';
 
-// ─── User Profile ────────────────────────────────────────────────────────────
+// ─── Actor helper ────────────────────────────────────────────────────────────
+
+function useActorReady() {
+  const { actor, isFetching } = useActor();
+  return { actor, actorReady: !!actor && !isFetching };
+}
+
+// ─── Auth / Profile ──────────────────────────────────────────────────────────
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
-  const query = useQuery<UserProfile | null>({
+  const query = useQuery({
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
@@ -39,7 +46,7 @@ export function useSaveCallerUserProfile() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (profile: UserProfile) => {
+    mutationFn: async (profile: { name: string; email: string }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.saveCallerUserProfile(profile);
     },
@@ -49,10 +56,26 @@ export function useSaveCallerUserProfile() {
   });
 }
 
+export function useIsCallerAdmin() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<boolean>({
+    queryKey: ['isCallerAdmin'],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Alias
+export const useIsAdmin = useIsCallerAdmin;
+
 // ─── Electricians ─────────────────────────────────────────────────────────────
 
 export function useGetAllElectricians() {
-  const { actor, isFetching } = useActor();
+  const { actor, actorReady } = useActorReady();
 
   return useQuery<Electrician[]>({
     queryKey: ['electricians'],
@@ -60,7 +83,7 @@ export function useGetAllElectricians() {
       if (!actor) return [];
       return actor.getAllElectricians();
     },
-    enabled: !!actor && !isFetching,
+    enabled: actorReady,
   });
 }
 
@@ -95,6 +118,7 @@ export function useAddElectrician() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['electricians'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingElectricians'] });
     },
   });
 }
@@ -134,6 +158,7 @@ export function useUpdateElectrician() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['electricians'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingElectricians'] });
     },
   });
 }
@@ -149,6 +174,7 @@ export function useRemoveElectrician() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['electricians'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingElectricians'] });
     },
   });
 }
@@ -156,7 +182,7 @@ export function useRemoveElectrician() {
 // ─── Work Orders ──────────────────────────────────────────────────────────────
 
 export function useGetAllWorkOrders() {
-  const { actor, isFetching } = useActor();
+  const { actor, actorReady } = useActorReady();
 
   return useQuery<WorkOrder[]>({
     queryKey: ['workOrders'],
@@ -164,20 +190,7 @@ export function useGetAllWorkOrders() {
       if (!actor) return [];
       return actor.getAllWorkOrders();
     },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetCurrentUserWorkOrders() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<WorkOrder[]>({
-    queryKey: ['currentUserWorkOrders'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getCurrentUserWorkOrders();
-    },
-    enabled: !!actor && !isFetching,
+    enabled: actorReady,
   });
 }
 
@@ -216,12 +229,49 @@ export function useCreateWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingWorkOrders'] });
+    },
+  });
+}
+
+export function useCreateFixedPriceWorkOrder() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      title: string;
+      description: string;
+      location: string;
+      priority: bigint;
+      customerEmail: string;
+      customerAddress: string;
+      customerContactNumber: string;
+      paymentMethod: string;
+      preferredEducation: ElectricianQualification;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.createFixedPriceWorkOrder(
+        params.title,
+        params.description,
+        params.location,
+        params.priority,
+        params.customerEmail,
+        params.customerAddress,
+        params.customerContactNumber,
+        params.paymentMethod,
+        params.preferredEducation,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingWorkOrders'] });
       queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
     },
   });
 }
 
-export function useUpdateWorkOrder() {
+export function useUpdateWorkOrderStatus() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
@@ -232,24 +282,29 @@ export function useUpdateWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingWorkOrders'] });
     },
   });
 }
 
-export function useAssignElectrician() {
+export function useAssignElectricianToWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { workOrderId: bigint; issuedElectrician: bigint }) => {
+    mutationFn: async (params: { workOrderId: bigint; electricianId: bigint }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.assignElectricianToWorkOrder(params.workOrderId, params.issuedElectrician);
+      return actor.assignElectricianToWorkOrder(params.workOrderId, params.electricianId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['verifiedApplications'] });
     },
   });
 }
+
+// Alias
+export const useAssignElectrician = useAssignElectricianToWorkOrder;
 
 export function useUpdateWorkOrderPayment() {
   const { actor } = useActor();
@@ -272,21 +327,25 @@ export function useUpdateWorkOrderPayment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingPayments'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }
 
-export function useApplyForWorkOrder() {
+export function useVerifyAndMoveToQueue() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (workOrderId: bigint) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.applyForWorkOrder(workOrderId);
+      return actor.verifyAndMoveToQueue(workOrderId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['verifiedApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingJobApplications'] });
     },
   });
 }
@@ -302,7 +361,7 @@ export function useAcceptWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['verifiedApplications'] });
     },
   });
 }
@@ -318,38 +377,64 @@ export function useDeclineWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['verifiedApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingJobApplications'] });
     },
   });
 }
 
-export function useVerifyWorkOrderApplication() {
+export function useGetVerifiedApplications() {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery<WorkOrder[]>({
+    queryKey: ['verifiedApplications'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getVerifiedApplications();
+    },
+    enabled: actorReady,
+  });
+}
+
+export function useGetWorkOrderApplication(workOrderId: bigint) {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery({
+    queryKey: ['workOrderApplication', workOrderId.toString()],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getWorkOrderApplication(workOrderId);
+    },
+    enabled: actorReady,
+  });
+}
+
+export function useApplyForWorkOrder() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (workOrderId: bigint) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.verifyWorkOrderApplication(workOrderId);
+      return actor.applyForWorkOrder(workOrderId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingJobApplications'] });
     },
   });
 }
 
-export function useUpdateApplicationStatus() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
+export function useGetCurrentUserWorkOrders() {
+  const { actor, actorReady } = useActorReady();
 
-  return useMutation({
-    mutationFn: async (params: { workOrderId: bigint; newStatus: ApplicationProcessStatus }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.updateApplicationStatusForWorkOrder(params.workOrderId, params.newStatus);
+  return useQuery<WorkOrder[]>({
+    queryKey: ['currentUserWorkOrders'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getCurrentUserWorkOrders();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
-    },
+    enabled: actorReady,
   });
 }
 
@@ -364,6 +449,7 @@ export function useSubmitWorkerRating() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
     },
   });
 }
@@ -379,22 +465,36 @@ export function useSubmitCustomerRating() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserWorkOrders'] });
     },
   });
 }
 
-// ─── Job Alerts ───────────────────────────────────────────────────────────────
+export function useGetWorkerChecklist(workOrderId: string) {
+  const { actor, actorReady } = useActorReady();
 
-export function useIsSubscribedToJobAlerts() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<boolean>({
-    queryKey: ['jobAlertSubscription'],
+  return useQuery({
+    queryKey: ['checklist', workOrderId],
     queryFn: async () => {
-      if (!actor) return false;
-      return actor.isSubscribedToJobAlerts();
+      if (!actor) return [];
+      return actor.getWorkerChecklist(workOrderId);
     },
-    enabled: !!actor && !isFetching,
+    enabled: actorReady && !!workOrderId,
+  });
+}
+
+export function useUpdateChecklistItem() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: string; itemId: string; completed: boolean }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateChecklistItem(params.workOrderId, params.itemId, params.completed);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['checklist', variables.workOrderId] });
+    },
   });
 }
 
@@ -408,7 +508,223 @@ export function useSubscribeToJobAlerts() {
       return actor.subscribeToJobAlerts();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobAlertSubscription'] });
+      queryClient.invalidateQueries({ queryKey: ['isSubscribedToJobAlerts'] });
+    },
+  });
+}
+
+export function useIsSubscribedToJobAlerts() {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery<boolean>({
+    queryKey: ['isSubscribedToJobAlerts'],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isSubscribedToJobAlerts();
+    },
+    enabled: actorReady,
+  });
+}
+
+export function useUpdateApplicationStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: bigint; newStatus: ApplicationProcessStatus }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateApplicationStatusForWorkOrder(params.workOrderId, params.newStatus);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingJobApplications'] });
+      queryClient.invalidateQueries({ queryKey: ['verifiedApplications'] });
+    },
+  });
+}
+
+// ─── Verification Queries ─────────────────────────────────────────────────────
+
+export function usePendingWorkOrders() {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery<WorkOrder[]>({
+    queryKey: ['pendingWorkOrders'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPendingWorkOrders();
+    },
+    enabled: actorReady,
+  });
+}
+
+export function usePendingElectricians() {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery<Electrician[]>({
+    queryKey: ['pendingElectricians'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPendingElectricians();
+    },
+    enabled: actorReady,
+  });
+}
+
+export function usePendingJobApplications() {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery<WorkOrder[]>({
+    queryKey: ['pendingJobApplications'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPendingJobApplications();
+    },
+    enabled: actorReady,
+  });
+}
+
+export function usePendingPayments() {
+  const { actor, actorReady } = useActorReady();
+
+  return useQuery<WorkOrder[]>({
+    queryKey: ['pendingPayments'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPendingPayments();
+    },
+    enabled: actorReady,
+  });
+}
+
+// ─── Verification Mutations ───────────────────────────────────────────────────
+
+export function useApproveWorkOrder() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.approveWorkOrder(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingWorkOrders'] });
+    },
+  });
+}
+
+export function useRejectWorkOrder() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { id: bigint; reason: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.rejectWorkOrder(params.id, params.reason);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingWorkOrders'] });
+    },
+  });
+}
+
+export function useApproveElectrician() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.approveElectrician(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['electricians'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingElectricians'] });
+    },
+  });
+}
+
+export function useRejectElectrician() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { id: bigint; reason: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.rejectElectrician(params.id, params.reason);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['electricians'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingElectricians'] });
+    },
+  });
+}
+
+export function useApproveJobApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: bigint; applicantId: Principal }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.approveJobApplication(params.workOrderId, params.applicantId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingJobApplications'] });
+    },
+  });
+}
+
+export function useRejectJobApplication() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: bigint; applicantId: Principal; reason: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.rejectJobApplication(params.workOrderId, params.applicantId, params.reason);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingJobApplications'] });
+    },
+  });
+}
+
+export function useApprovePayment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (workOrderId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.approvePayment(workOrderId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingPayments'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+    },
+  });
+}
+
+export function useFlagPayment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { workOrderId: bigint; note: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.flagPayment(params.workOrderId, params.note);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingPayments'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
     },
   });
 }

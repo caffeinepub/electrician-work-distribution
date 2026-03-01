@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { useGetAllWorkOrders, useUpdateWorkOrderPayment } from '../hooks/useQueries';
-import { PaymentStatus, WorkOrderStatus } from '../backend';
-import type { WorkOrder } from '../backend';
-import { formatTimestamp } from '../lib/utils';
-import PaymentStatusBadge from '../components/PaymentStatusBadge';
-import StatusBadge from '../components/StatusBadge';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -15,186 +16,296 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { DollarSign, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import {
+  IndianRupee, TrendingUp, Clock, CheckCircle,
+  Edit, Loader2, CreditCard,
+} from 'lucide-react';
+import { useGetAllWorkOrders, useUpdateWorkOrderPayment } from '../hooks/useQueries';
+import { PaymentStatus, WorkOrderStatus } from '../backend';
+import StatusBadge from '../components/StatusBadge';
+import PaymentStatusBadge from '../components/PaymentStatusBadge';
+import PageTransition from '../components/PageTransition';
+import { formatTimestamp } from '../lib/utils';
+
+// PaymentStatus is a discriminated union, not an enum.
+// We use string literals for __kind__ comparisons and for Select values.
+type PaymentStatusKind = 'pending' | 'paid' | 'confirmed' | 'flagged';
+
+function makePaymentStatus(kind: PaymentStatusKind): PaymentStatus {
+  switch (kind) {
+    case 'paid': return { __kind__: 'paid', paid: null };
+    case 'confirmed': return { __kind__: 'confirmed', confirmed: null };
+    case 'flagged': return { __kind__: 'flagged', flagged: '' };
+    case 'pending':
+    default: return { __kind__: 'pending', pending: null };
+  }
+}
 
 export default function Payments() {
-  const { identity } = useInternetIdentity();
   const { data: workOrders = [], isLoading } = useGetAllWorkOrders();
   const updatePayment = useUpdateWorkOrderPayment();
 
-  const [editTarget, setEditTarget] = useState<WorkOrder | null>(null);
-  const [payAmount, setPayAmount] = useState('');
-  const [payMethod, setPayMethod] = useState('');
-  const [payStatus, setPayStatus] = useState<PaymentStatus>(PaymentStatus.pending);
+  const [editDialog, setEditDialog] = useState<{
+    open: boolean;
+    orderId: bigint | null;
+    amount: string;
+    method: string;
+    statusKind: PaymentStatusKind;
+  }>({
+    open: false,
+    orderId: null,
+    amount: '',
+    method: '',
+    statusKind: 'pending',
+  });
+
+  const closeDialog = () =>
+    setEditDialog({ open: false, orderId: null, amount: '', method: '', statusKind: 'pending' });
 
   const totalRevenue = workOrders
-    .filter((wo) => wo.paymentStatus === PaymentStatus.paid)
-    .reduce((sum, wo) => sum + Number(wo.paymentAmount), 0);
+    .filter(o => o.paymentStatus.__kind__ === 'paid' || o.paymentStatus.__kind__ === 'confirmed')
+    .reduce((sum, o) => sum + Number(o.paymentAmount), 0);
 
-  const pendingAmount = workOrders
-    .filter((wo) => wo.paymentStatus === PaymentStatus.pending && wo.status !== WorkOrderStatus.cancelled)
-    .reduce((sum, wo) => sum + Number(wo.paymentAmount), 0);
+  const pendingRevenue = workOrders
+    .filter(o => o.paymentStatus.__kind__ === 'pending' && o.status !== WorkOrderStatus.cancelled)
+    .reduce((sum, o) => sum + Number(o.paymentAmount), 0);
 
-  const paidCount = workOrders.filter((wo) => wo.paymentStatus === PaymentStatus.paid).length;
-  const pendingCount = workOrders.filter(
-    (wo) => wo.paymentStatus === PaymentStatus.pending && wo.status !== WorkOrderStatus.cancelled
+  const paidCount = workOrders.filter(
+    o => o.paymentStatus.__kind__ === 'paid' || o.paymentStatus.__kind__ === 'confirmed'
   ).length;
 
-  const openEdit = (wo: WorkOrder) => {
-    setEditTarget(wo);
-    setPayAmount(wo.paymentAmount.toString());
-    setPayMethod(wo.paymentMethod);
-    setPayStatus(wo.paymentStatus);
+  const pendingCount = workOrders.filter(
+    o => o.paymentStatus.__kind__ === 'pending' && o.status !== WorkOrderStatus.cancelled
+  ).length;
+
+  const openEdit = (order: typeof workOrders[0]) => {
+    setEditDialog({
+      open: true,
+      orderId: order.id,
+      amount: order.paymentAmount.toString(),
+      method: order.paymentMethod,
+      statusKind: order.paymentStatus.__kind__ as PaymentStatusKind,
+    });
   };
 
-  const handleSave = async () => {
-    if (!editTarget) return;
-    try {
-      await updatePayment.mutateAsync({
-        id: editTarget.id,
-        paymentAmount: BigInt(Math.round(parseFloat(payAmount) || 0)),
-        paymentMethod: payMethod,
-        paymentStatus: payStatus,
-      });
-      toast.success('Payment updated.');
-      setEditTarget(null);
-    } catch {
-      toast.error('Failed to update payment.');
-    }
+  const handleSave = () => {
+    if (!editDialog.orderId) return;
+    updatePayment.mutate(
+      {
+        id: editDialog.orderId,
+        paymentAmount: BigInt(editDialog.amount || '0'),
+        paymentMethod: editDialog.method,
+        paymentStatus: makePaymentStatus(editDialog.statusKind),
+      },
+      {
+        onSuccess: () => {
+          toast.success('Payment updated successfully');
+          closeDialog();
+        },
+        onError: (err: unknown) =>
+          toast.error(err instanceof Error ? err.message : 'Failed to update payment'),
+      }
+    );
   };
-
-  if (!identity) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p className="text-muted-foreground">Please log in to view payments.</p>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Payments</h1>
+    <PageTransition>
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <CreditCard className="h-6 w-6 text-primary" />
+            Payments
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Track and manage all payment transactions
+          </p>
+        </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-400' },
-          { label: 'Pending Amount', value: `$${pendingAmount.toLocaleString()}`, icon: Clock, color: 'text-amber-400' },
-          { label: 'Paid Orders', value: paidCount, icon: CheckCircle, color: 'text-primary' },
-          { label: 'Pending Orders', value: pendingCount, icon: TrendingUp, color: 'text-orange-400' },
-        ].map((card) => (
-          <div key={card.label} className="bg-card border border-border rounded-sm p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <card.icon className={`w-4 h-4 ${card.color}`} />
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">{card.label}</p>
-            </div>
-            <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="bg-card border border-border rounded-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-muted-foreground">
-              <th className="text-left p-3">Work Order</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-left p-3">Amount</th>
-              <th className="text-left p-3">Method</th>
-              <th className="text-left p-3">Payment Status</th>
-              <th className="text-left p-3">Date</th>
-              <th className="text-left p-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {workOrders.map((wo) => (
-              <tr key={wo.id.toString()} className="border-b border-border/50 hover:bg-accent/30">
-                <td className="p-3">
-                  <div>
-                    <p className="font-medium text-xs">{wo.title}</p>
-                    <p className="text-xs text-muted-foreground font-mono">#{wo.id.toString()}</p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="border-border">
+                <CardContent className="p-5">
+                  <Skeleton className="h-8 w-8 rounded-lg mb-3" />
+                  <Skeleton className="h-7 w-24 mb-1" />
+                  <Skeleton className="h-4 w-32" />
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <>
+              <Card className="border-green-500/20 bg-green-500/5 hover:shadow-lg hover:shadow-green-500/10 transition-all duration-300">
+                <CardContent className="p-5">
+                  <div className="p-2 bg-green-500/10 rounded-lg w-fit mb-3">
+                    <TrendingUp className="h-5 w-5 text-green-400" />
                   </div>
-                </td>
-                <td className="p-3">
-                  <StatusBadge status={wo.status} />
-                </td>
-                <td className="p-3 font-medium">${Number(wo.paymentAmount).toLocaleString()}</td>
-                <td className="p-3 text-muted-foreground">{wo.paymentMethod || '—'}</td>
-                <td className="p-3">
-                  <PaymentStatusBadge status={wo.paymentStatus} />
-                </td>
-                <td className="p-3 text-muted-foreground text-xs">{formatTimestamp(wo.createdAt)}</td>
-                <td className="p-3">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEdit(wo)}>
-                    Edit
-                  </Button>
-                </td>
-              </tr>
-            ))}
-            {workOrders.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                  No payment records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                  <p className="text-2xl font-bold text-green-400">₹{totalRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total Collected</p>
+                </CardContent>
+              </Card>
+              <Card className="border-amber-400/20 bg-amber-400/5 hover:shadow-lg hover:shadow-amber-400/10 transition-all duration-300">
+                <CardContent className="p-5">
+                  <div className="p-2 bg-amber-400/10 rounded-lg w-fit mb-3">
+                    <Clock className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-amber-400">₹{pendingRevenue.toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Pending Collection</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-5">
+                  <div className="p-2 bg-primary/10 rounded-lg w-fit mb-3">
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{paidCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Paid Orders</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border hover:shadow-lg transition-all duration-300">
+                <CardContent className="p-5">
+                  <div className="p-2 bg-muted rounded-lg w-fit mb-3">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Pending Orders</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Edit Payment</DialogTitle>
-            <DialogDescription>{editTarget?.title}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <Label>Amount</Label>
-              <Input type="number" min="0" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+        {/* Payment Table */}
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">All Transactions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="flex items-center gap-3 p-3">
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-8 w-16 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : workOrders.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <IndianRupee className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No transactions yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {workOrders.map(order => (
+                  <div
+                    key={order.id.toString()}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors border border-transparent hover:border-border"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-bold text-primary">#{order.id.toString()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{order.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTimestamp(order.createdAt)} · {order.paymentMethod}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-bold text-primary">₹{order.paymentAmount.toString()}</span>
+                      <StatusBadge status={order.status} />
+                      <PaymentStatusBadge status={order.paymentStatus} />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEdit(order)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Edit Dialog */}
+        <Dialog open={editDialog.open} onOpenChange={open => !open && closeDialog()}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Edit className="h-4 w-4 text-primary" />
+                Edit Payment
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Amount (₹)</Label>
+                <Input
+                  type="number"
+                  value={editDialog.amount}
+                  onChange={e => setEditDialog(prev => ({ ...prev, amount: e.target.value }))}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment Method</Label>
+                <Input
+                  value={editDialog.method}
+                  onChange={e => setEditDialog(prev => ({ ...prev, method: e.target.value }))}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment Status</Label>
+                <Select
+                  value={editDialog.statusKind}
+                  onValueChange={v =>
+                    setEditDialog(prev => ({ ...prev, statusKind: v as PaymentStatusKind }))
+                  }
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="flagged">Flagged</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-1">
-              <Label>Payment Method</Label>
-              <Input value={payMethod} onChange={(e) => setPayMethod(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Payment Status</Label>
-              <Select value={payStatus} onValueChange={(v) => setPayStatus(v as PaymentStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={PaymentStatus.pending}>Pending</SelectItem>
-                  <SelectItem value={PaymentStatus.paid}>Paid</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSave} disabled={updatePayment.isPending}>
-              {updatePayment.isPending ? 'Saving...' : 'Save'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={closeDialog}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} disabled={updatePayment.isPending}>
+                {updatePayment.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </PageTransition>
   );
 }

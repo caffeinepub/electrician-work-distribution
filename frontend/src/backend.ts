@@ -121,6 +121,7 @@ export interface WorkOrder {
     customerEmail: string;
     paymentAmount: bigint;
     location: string;
+    verificationStatus: VerificationStatus;
 }
 export interface _CaffeineStorageCreateCertificateResult {
     method: string;
@@ -129,6 +130,26 @@ export interface _CaffeineStorageCreateCertificateResult {
 export interface PublicJobAlertSubscription {
     subscribedAt: Time;
 }
+export type VerificationStatus = {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "approved";
+    approved: null;
+} | {
+    __kind__: "verifiedPendingAssignment";
+    verifiedPendingAssignment: null;
+} | {
+    __kind__: "rejected";
+    rejected: string;
+};
+export type Result = {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "err";
+    err: string;
+};
 export interface Electrician {
     id: bigint;
     paymentMethod: string;
@@ -141,7 +162,27 @@ export interface Electrician {
     currency: string;
     address: string;
     qualification: ElectricianQualification;
+    verificationStatus: VerificationStatus;
 }
+export interface ChecklistItem {
+    id: string;
+    order: bigint;
+    completed: boolean;
+    taskLabel: string;
+}
+export type PaymentStatus = {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "paid";
+    paid: null;
+} | {
+    __kind__: "confirmed";
+    confirmed: null;
+} | {
+    __kind__: "flagged";
+    flagged: string;
+};
 export interface _CaffeineStorageRefillResult {
     success?: boolean;
     topped_up_amount?: bigint;
@@ -161,10 +202,6 @@ export enum ElectricianQualification {
     eeeDiploma = "eeeDiploma",
     electronicElectricalEngineering = "electronicElectricalEngineering",
     itiElectrician = "itiElectrician"
-}
-export enum PaymentStatus {
-    pending = "pending",
-    paid = "paid"
 }
 export enum RepairServiceType {
     electronicRepair = "electronicRepair",
@@ -203,12 +240,18 @@ export interface backendInterface {
     acceptWorkOrder(workOrderId: bigint): Promise<void>;
     addElectrician(name: string, specialist: Speciality, workAvailability: WorkAvailability, qualification: ElectricianQualification, email: string, address: string, hourlyRate: bigint, currency: string, paymentMethod: string): Promise<bigint>;
     applyForWorkOrder(workOrderId: bigint): Promise<void>;
+    approveElectrician(id: bigint): Promise<void>;
+    approveJobApplication(workOrderId: bigint, applicantId: Principal): Promise<void>;
+    approvePayment(workOrderId: bigint): Promise<void>;
+    approveWorkOrder(id: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignElectricianToWorkOrder(workOrderId: bigint, issuedElectrician: bigint): Promise<void>;
+    createFixedPriceWorkOrder(title: string, description: string, location: string, priority: bigint, customerEmail: string, customerAddress: string, customerContactNumber: string, paymentMethod: string, preferredEducation: ElectricianQualification): Promise<bigint>;
     createWorkOrder(title: string, description: string, location: string, priority: bigint, issuedElectrician: bigint | null, customerEmail: string, customerAddress: string, customerContactNumber: string, paymentAmount: bigint, paymentMethod: string, preferredEducation: ElectricianQualification): Promise<bigint>;
     declineWorkOrder(workOrderId: bigint): Promise<void>;
     findElectricianById(id: bigint): Promise<Electrician>;
     findWorkOrderById(id: bigint): Promise<WorkOrder>;
+    flagPayment(workOrderId: bigint, note: string): Promise<void>;
     getAllElectricians(): Promise<Array<Electrician>>;
     getAllJobAlertSubscriptions(): Promise<Array<PublicJobAlertSubscription>>;
     getAllWorkOrders(): Promise<Array<WorkOrder>>;
@@ -216,24 +259,39 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCurrentUserWorkOrders(): Promise<Array<WorkOrder>>;
+    getPendingElectricians(): Promise<Array<Electrician>>;
+    getPendingJobApplications(): Promise<Array<WorkOrder>>;
+    getPendingPayments(): Promise<Array<WorkOrder>>;
+    getPendingWorkOrders(): Promise<Array<WorkOrder>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getVerifiedApplications(): Promise<Array<WorkOrder>>;
     getWorkOrderApplication(workOrderId: bigint): Promise<WorkOrderApplication | null>;
+    getWorkOrderConfirmation(workOrderId: bigint): Promise<{
+        status: WorkOrderStatus;
+        workOrderId: bigint;
+    }>;
     getWorkOrdersByApplicationStatus(status: ApplicationProcessStatus): Promise<Array<WorkOrder>>;
     getWorkOrdersByElectrician(electricianId: bigint): Promise<Array<WorkOrder>>;
+    getWorkerChecklist(workOrderId: string): Promise<Array<ChecklistItem>>;
     isCallerAdmin(): Promise<boolean>;
     isSubscribedToJobAlerts(): Promise<boolean>;
+    rejectElectrician(id: bigint, reason: string): Promise<void>;
+    rejectJobApplication(workOrderId: bigint, applicantId: Principal, reason: string): Promise<void>;
+    rejectWorkOrder(id: bigint, reason: string): Promise<void>;
     removeElectrician(id: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitCustomerRating(workOrderId: bigint, rating: bigint, comment: string): Promise<void>;
     submitWorkerRating(workOrderId: bigint, rating: bigint, comment: string): Promise<void>;
     subscribeToJobAlerts(): Promise<void>;
     updateApplicationStatusForWorkOrder(workOrderId: bigint, newStatus: ApplicationProcessStatus): Promise<void>;
+    updateChecklistItem(workOrderId: string, itemId: string, completed: boolean): Promise<Result>;
     updateElectrician(id: bigint, name: string | null, specialist: Speciality | null, isAvailable: boolean | null, workAvailability: WorkAvailability | null, qualification: ElectricianQualification | null, email: string | null, address: string | null, hourlyRate: bigint | null, currency: string | null, paymentMethod: string | null): Promise<void>;
     updateWorkOrderPayment(id: bigint, paymentAmount: bigint, paymentMethod: string, paymentStatus: PaymentStatus): Promise<void>;
     updateWorkOrderStatus(id: bigint, status: WorkOrderStatus): Promise<void>;
-    verifyWorkOrderApplication(workOrderId: bigint): Promise<void>;
+    verifyAndMoveToQueue(workOrderId: bigint): Promise<void>;
+    verifyApplication(workOrderId: bigint): Promise<void>;
 }
-import type { ApplicationProcessStatus as _ApplicationProcessStatus, Electrician as _Electrician, ElectricianQualification as _ElectricianQualification, PaymentStatus as _PaymentStatus, Rating as _Rating, RepairServiceType as _RepairServiceType, Speciality as _Speciality, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, WorkAvailability as _WorkAvailability, WorkOrder as _WorkOrder, WorkOrderApplication as _WorkOrderApplication, WorkOrderStatus as _WorkOrderStatus, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
+import type { ApplicationProcessStatus as _ApplicationProcessStatus, Electrician as _Electrician, ElectricianQualification as _ElectricianQualification, PaymentStatus as _PaymentStatus, Rating as _Rating, RepairServiceType as _RepairServiceType, Result as _Result, Speciality as _Speciality, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, VerificationStatus as _VerificationStatus, WorkAvailability as _WorkAvailability, WorkOrder as _WorkOrder, WorkOrderApplication as _WorkOrderApplication, WorkOrderStatus as _WorkOrderStatus, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _caffeineStorageBlobIsLive(arg0: Uint8Array): Promise<boolean> {
@@ -376,6 +434,62 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async approveElectrician(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.approveElectrician(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.approveElectrician(arg0);
+            return result;
+        }
+    }
+    async approveJobApplication(arg0: bigint, arg1: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.approveJobApplication(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.approveJobApplication(arg0, arg1);
+            return result;
+        }
+    }
+    async approvePayment(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.approvePayment(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.approvePayment(arg0);
+            return result;
+        }
+    }
+    async approveWorkOrder(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.approveWorkOrder(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.approveWorkOrder(arg0);
+            return result;
+        }
+    }
     async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
@@ -401,6 +515,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignElectricianToWorkOrder(arg0, arg1);
+            return result;
+        }
+    }
+    async createFixedPriceWorkOrder(arg0: string, arg1: string, arg2: string, arg3: bigint, arg4: string, arg5: string, arg6: string, arg7: string, arg8: ElectricianQualification): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createFixedPriceWorkOrder(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, to_candid_ElectricianQualification_n12(this._uploadFile, this._downloadFile, arg8));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createFixedPriceWorkOrder(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, to_candid_ElectricianQualification_n12(this._uploadFile, this._downloadFile, arg8));
             return result;
         }
     }
@@ -450,28 +578,42 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.findWorkOrderById(arg0);
-                return from_candid_WorkOrder_n25(this._uploadFile, this._downloadFile, result);
+                return from_candid_WorkOrder_n27(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.findWorkOrderById(arg0);
-            return from_candid_WorkOrder_n25(this._uploadFile, this._downloadFile, result);
+            return from_candid_WorkOrder_n27(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async flagPayment(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.flagPayment(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.flagPayment(arg0, arg1);
+            return result;
         }
     }
     async getAllElectricians(): Promise<Array<Electrician>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllElectricians();
-                return from_candid_vec_n34(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllElectricians();
-            return from_candid_vec_n34(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllJobAlertSubscriptions(): Promise<Array<PublicJobAlertSubscription>> {
@@ -492,126 +634,227 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllWorkOrders();
-                return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllWorkOrders();
-            return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAvailableServices(): Promise<Array<RepairServiceType>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAvailableServices();
-                return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n38(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAvailableServices();
-            return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n38(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n39(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n41(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n39(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n41(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n40(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n42(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n40(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n42(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCurrentUserWorkOrders(): Promise<Array<WorkOrder>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCurrentUserWorkOrders();
-                return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCurrentUserWorkOrders();
-            return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPendingElectricians(): Promise<Array<Electrician>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPendingElectricians();
+                return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPendingElectricians();
+            return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPendingJobApplications(): Promise<Array<WorkOrder>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPendingJobApplications();
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPendingJobApplications();
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPendingPayments(): Promise<Array<WorkOrder>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPendingPayments();
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPendingPayments();
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPendingWorkOrders(): Promise<Array<WorkOrder>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPendingWorkOrders();
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPendingWorkOrders();
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n39(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n41(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n39(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n41(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getVerifiedApplications(): Promise<Array<WorkOrder>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getVerifiedApplications();
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getVerifiedApplications();
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
         }
     }
     async getWorkOrderApplication(arg0: bigint): Promise<WorkOrderApplication | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getWorkOrderApplication(arg0);
-                return from_candid_opt_n42(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n44(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getWorkOrderApplication(arg0);
-            return from_candid_opt_n42(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n44(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getWorkOrdersByApplicationStatus(arg0: ApplicationProcessStatus): Promise<Array<WorkOrder>> {
+    async getWorkOrderConfirmation(arg0: bigint): Promise<{
+        status: WorkOrderStatus;
+        workOrderId: bigint;
+    }> {
         if (this.processError) {
             try {
-                const result = await this.actor.getWorkOrdersByApplicationStatus(to_candid_ApplicationProcessStatus_n43(this._uploadFile, this._downloadFile, arg0));
-                return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.getWorkOrderConfirmation(arg0);
+                return from_candid_record_n45(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getWorkOrdersByApplicationStatus(to_candid_ApplicationProcessStatus_n43(this._uploadFile, this._downloadFile, arg0));
-            return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.getWorkOrderConfirmation(arg0);
+            return from_candid_record_n45(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getWorkOrdersByApplicationStatus(arg0: ApplicationProcessStatus): Promise<Array<WorkOrder>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getWorkOrdersByApplicationStatus(to_candid_ApplicationProcessStatus_n46(this._uploadFile, this._downloadFile, arg0));
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getWorkOrdersByApplicationStatus(to_candid_ApplicationProcessStatus_n46(this._uploadFile, this._downloadFile, arg0));
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
         }
     }
     async getWorkOrdersByElectrician(arg0: bigint): Promise<Array<WorkOrder>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getWorkOrdersByElectrician(arg0);
-                return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getWorkOrdersByElectrician(arg0);
-            return from_candid_vec_n35(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getWorkerChecklist(arg0: string): Promise<Array<ChecklistItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getWorkerChecklist(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getWorkerChecklist(arg0);
+            return result;
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -639,6 +882,48 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.isSubscribedToJobAlerts();
+            return result;
+        }
+    }
+    async rejectElectrician(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.rejectElectrician(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.rejectElectrician(arg0, arg1);
+            return result;
+        }
+    }
+    async rejectJobApplication(arg0: bigint, arg1: Principal, arg2: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.rejectJobApplication(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.rejectJobApplication(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async rejectWorkOrder(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.rejectWorkOrder(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.rejectWorkOrder(arg0, arg1);
             return result;
         }
     }
@@ -715,76 +1000,104 @@ export class Backend implements backendInterface {
     async updateApplicationStatusForWorkOrder(arg0: bigint, arg1: ApplicationProcessStatus): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateApplicationStatusForWorkOrder(arg0, to_candid_ApplicationProcessStatus_n43(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.updateApplicationStatusForWorkOrder(arg0, to_candid_ApplicationProcessStatus_n46(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateApplicationStatusForWorkOrder(arg0, to_candid_ApplicationProcessStatus_n43(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.updateApplicationStatusForWorkOrder(arg0, to_candid_ApplicationProcessStatus_n46(this._uploadFile, this._downloadFile, arg1));
             return result;
+        }
+    }
+    async updateChecklistItem(arg0: string, arg1: string, arg2: boolean): Promise<Result> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateChecklistItem(arg0, arg1, arg2);
+                return from_candid_Result_n48(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateChecklistItem(arg0, arg1, arg2);
+            return from_candid_Result_n48(this._uploadFile, this._downloadFile, result);
         }
     }
     async updateElectrician(arg0: bigint, arg1: string | null, arg2: Speciality | null, arg3: boolean | null, arg4: WorkAvailability | null, arg5: ElectricianQualification | null, arg6: string | null, arg7: string | null, arg8: bigint | null, arg9: string | null, arg10: string | null): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateElectrician(arg0, to_candid_opt_n45(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n46(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n47(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n48(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n49(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg10));
+                const result = await this.actor.updateElectrician(arg0, to_candid_opt_n50(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n51(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n52(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n53(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n54(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg10));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateElectrician(arg0, to_candid_opt_n45(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n46(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n47(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n48(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n49(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n45(this._uploadFile, this._downloadFile, arg10));
+            const result = await this.actor.updateElectrician(arg0, to_candid_opt_n50(this._uploadFile, this._downloadFile, arg1), to_candid_opt_n51(this._uploadFile, this._downloadFile, arg2), to_candid_opt_n52(this._uploadFile, this._downloadFile, arg3), to_candid_opt_n53(this._uploadFile, this._downloadFile, arg4), to_candid_opt_n54(this._uploadFile, this._downloadFile, arg5), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg6), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg7), to_candid_opt_n16(this._uploadFile, this._downloadFile, arg8), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg9), to_candid_opt_n50(this._uploadFile, this._downloadFile, arg10));
             return result;
         }
     }
     async updateWorkOrderPayment(arg0: bigint, arg1: bigint, arg2: string, arg3: PaymentStatus): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateWorkOrderPayment(arg0, arg1, arg2, to_candid_PaymentStatus_n50(this._uploadFile, this._downloadFile, arg3));
+                const result = await this.actor.updateWorkOrderPayment(arg0, arg1, arg2, to_candid_PaymentStatus_n55(this._uploadFile, this._downloadFile, arg3));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateWorkOrderPayment(arg0, arg1, arg2, to_candid_PaymentStatus_n50(this._uploadFile, this._downloadFile, arg3));
+            const result = await this.actor.updateWorkOrderPayment(arg0, arg1, arg2, to_candid_PaymentStatus_n55(this._uploadFile, this._downloadFile, arg3));
             return result;
         }
     }
     async updateWorkOrderStatus(arg0: bigint, arg1: WorkOrderStatus): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateWorkOrderStatus(arg0, to_candid_WorkOrderStatus_n52(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.updateWorkOrderStatus(arg0, to_candid_WorkOrderStatus_n57(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateWorkOrderStatus(arg0, to_candid_WorkOrderStatus_n52(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.updateWorkOrderStatus(arg0, to_candid_WorkOrderStatus_n57(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
-    async verifyWorkOrderApplication(arg0: bigint): Promise<void> {
+    async verifyAndMoveToQueue(arg0: bigint): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.verifyWorkOrderApplication(arg0);
+                const result = await this.actor.verifyAndMoveToQueue(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.verifyWorkOrderApplication(arg0);
+            const result = await this.actor.verifyAndMoveToQueue(arg0);
+            return result;
+        }
+    }
+    async verifyApplication(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.verifyApplication(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.verifyApplication(arg0);
             return result;
         }
     }
 }
-function from_candid_ApplicationProcessStatus_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ApplicationProcessStatus): ApplicationProcessStatus {
-    return from_candid_variant_n33(_uploadFile, _downloadFile, value);
+function from_candid_ApplicationProcessStatus_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ApplicationProcessStatus): ApplicationProcessStatus {
+    return from_candid_variant_n35(_uploadFile, _downloadFile, value);
 }
 function from_candid_ElectricianQualification_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ElectricianQualification): ElectricianQualification {
     return from_candid_variant_n24(_uploadFile, _downloadFile, value);
@@ -792,37 +1105,43 @@ function from_candid_ElectricianQualification_n23(_uploadFile: (file: ExternalBl
 function from_candid_Electrician_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Electrician): Electrician {
     return from_candid_record_n18(_uploadFile, _downloadFile, value);
 }
-function from_candid_PaymentStatus_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PaymentStatus): PaymentStatus {
-    return from_candid_variant_n30(_uploadFile, _downloadFile, value);
+function from_candid_PaymentStatus_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _PaymentStatus): PaymentStatus {
+    return from_candid_variant_n32(_uploadFile, _downloadFile, value);
 }
-function from_candid_RepairServiceType_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RepairServiceType): RepairServiceType {
-    return from_candid_variant_n38(_uploadFile, _downloadFile, value);
+function from_candid_RepairServiceType_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RepairServiceType): RepairServiceType {
+    return from_candid_variant_n40(_uploadFile, _downloadFile, value);
+}
+function from_candid_Result_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Result): Result {
+    return from_candid_variant_n49(_uploadFile, _downloadFile, value);
 }
 function from_candid_Speciality_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Speciality): Speciality {
     return from_candid_variant_n22(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n41(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n43(_uploadFile, _downloadFile, value);
+}
+function from_candid_VerificationStatus_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _VerificationStatus): VerificationStatus {
+    return from_candid_variant_n26(_uploadFile, _downloadFile, value);
 }
 function from_candid_WorkAvailability_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorkAvailability): WorkAvailability {
     return from_candid_variant_n20(_uploadFile, _downloadFile, value);
 }
-function from_candid_WorkOrderStatus_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorkOrderStatus): WorkOrderStatus {
-    return from_candid_variant_n28(_uploadFile, _downloadFile, value);
+function from_candid_WorkOrderStatus_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorkOrderStatus): WorkOrderStatus {
+    return from_candid_variant_n30(_uploadFile, _downloadFile, value);
 }
-function from_candid_WorkOrder_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorkOrder): WorkOrder {
-    return from_candid_record_n26(_uploadFile, _downloadFile, value);
+function from_candid_WorkOrder_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _WorkOrder): WorkOrder {
+    return from_candid_record_n28(_uploadFile, _downloadFile, value);
 }
 function from_candid__CaffeineStorageRefillResult_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: __CaffeineStorageRefillResult): _CaffeineStorageRefillResult {
     return from_candid_record_n5(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Rating]): Rating | null {
+function from_candid_opt_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Rating]): Rating | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_WorkOrderApplication]): WorkOrderApplication | null {
+function from_candid_opt_n44(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_WorkOrderApplication]): WorkOrderApplication | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
@@ -843,6 +1162,7 @@ function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uin
     currency: string;
     address: string;
     qualification: _ElectricianQualification;
+    verificationStatus: _VerificationStatus;
 }): {
     id: bigint;
     paymentMethod: string;
@@ -855,6 +1175,7 @@ function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uin
     currency: string;
     address: string;
     qualification: ElectricianQualification;
+    verificationStatus: VerificationStatus;
 } {
     return {
         id: value.id,
@@ -867,10 +1188,11 @@ function from_candid_record_n18(_uploadFile: (file: ExternalBlob) => Promise<Uin
         email: value.email,
         currency: value.currency,
         address: value.address,
-        qualification: from_candid_ElectricianQualification_n23(_uploadFile, _downloadFile, value.qualification)
+        qualification: from_candid_ElectricianQualification_n23(_uploadFile, _downloadFile, value.qualification),
+        verificationStatus: from_candid_VerificationStatus_n25(_uploadFile, _downloadFile, value.verificationStatus)
     };
 }
-function from_candid_record_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     status: _WorkOrderStatus;
     title: string;
@@ -889,6 +1211,7 @@ function from_candid_record_n26(_uploadFile: (file: ExternalBlob) => Promise<Uin
     customerEmail: string;
     paymentAmount: bigint;
     location: string;
+    verificationStatus: _VerificationStatus;
 }): {
     id: bigint;
     status: WorkOrderStatus;
@@ -908,26 +1231,40 @@ function from_candid_record_n26(_uploadFile: (file: ExternalBlob) => Promise<Uin
     customerEmail: string;
     paymentAmount: bigint;
     location: string;
+    verificationStatus: VerificationStatus;
 } {
     return {
         id: value.id,
-        status: from_candid_WorkOrderStatus_n27(_uploadFile, _downloadFile, value.status),
+        status: from_candid_WorkOrderStatus_n29(_uploadFile, _downloadFile, value.status),
         title: value.title,
-        paymentStatus: from_candid_PaymentStatus_n29(_uploadFile, _downloadFile, value.paymentStatus),
+        paymentStatus: from_candid_PaymentStatus_n31(_uploadFile, _downloadFile, value.paymentStatus),
         paymentMethod: value.paymentMethod,
-        workerRating: record_opt_to_undefined(from_candid_opt_n31(_uploadFile, _downloadFile, value.workerRating)),
+        workerRating: record_opt_to_undefined(from_candid_opt_n33(_uploadFile, _downloadFile, value.workerRating)),
         createdAt: value.createdAt,
-        customerRating: record_opt_to_undefined(from_candid_opt_n31(_uploadFile, _downloadFile, value.customerRating)),
+        customerRating: record_opt_to_undefined(from_candid_opt_n33(_uploadFile, _downloadFile, value.customerRating)),
         preferredEducation: from_candid_ElectricianQualification_n23(_uploadFile, _downloadFile, value.preferredEducation),
         description: value.description,
-        applicationStatus: from_candid_ApplicationProcessStatus_n32(_uploadFile, _downloadFile, value.applicationStatus),
+        applicationStatus: from_candid_ApplicationProcessStatus_n34(_uploadFile, _downloadFile, value.applicationStatus),
         customerAddress: value.customerAddress,
         issuedElectrician: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.issuedElectrician)),
         customerContactNumber: value.customerContactNumber,
         priority: value.priority,
         customerEmail: value.customerEmail,
         paymentAmount: value.paymentAmount,
-        location: value.location
+        location: value.location,
+        verificationStatus: from_candid_VerificationStatus_n25(_uploadFile, _downloadFile, value.verificationStatus)
+    };
+}
+function from_candid_record_n45(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    status: _WorkOrderStatus;
+    workOrderId: bigint;
+}): {
+    status: WorkOrderStatus;
+    workOrderId: bigint;
+} {
+    return {
+        status: from_candid_WorkOrderStatus_n29(_uploadFile, _downloadFile, value.status),
+        workOrderId: value.workOrderId
     };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -967,7 +1304,42 @@ function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): ElectricianQualification {
     return "eeeDiploma" in value ? ElectricianQualification.eeeDiploma : "electronicElectricalEngineering" in value ? ElectricianQualification.electronicElectricalEngineering : "itiElectrician" in value ? ElectricianQualification.itiElectrician : value;
 }
-function from_candid_variant_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    pending: null;
+} | {
+    approved: null;
+} | {
+    verifiedPendingAssignment: null;
+} | {
+    rejected: string;
+}): {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "approved";
+    approved: null;
+} | {
+    __kind__: "verifiedPendingAssignment";
+    verifiedPendingAssignment: null;
+} | {
+    __kind__: "rejected";
+    rejected: string;
+} {
+    return "pending" in value ? {
+        __kind__: "pending",
+        pending: value.pending
+    } : "approved" in value ? {
+        __kind__: "approved",
+        approved: value.approved
+    } : "verifiedPendingAssignment" in value ? {
+        __kind__: "verifiedPendingAssignment",
+        verifiedPendingAssignment: value.verifiedPendingAssignment
+    } : "rejected" in value ? {
+        __kind__: "rejected",
+        rejected: value.rejected
+    } : value;
+}
+function from_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     cancelled: null;
 } | {
     open: null;
@@ -978,14 +1350,42 @@ function from_candid_variant_n28(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): WorkOrderStatus {
     return "cancelled" in value ? WorkOrderStatus.cancelled : "open" in value ? WorkOrderStatus.open : "completed" in value ? WorkOrderStatus.completed : "inProgress" in value ? WorkOrderStatus.inProgress : value;
 }
-function from_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     pending: null;
 } | {
     paid: null;
-}): PaymentStatus {
-    return "pending" in value ? PaymentStatus.pending : "paid" in value ? PaymentStatus.paid : value;
+} | {
+    confirmed: null;
+} | {
+    flagged: string;
+}): {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "paid";
+    paid: null;
+} | {
+    __kind__: "confirmed";
+    confirmed: null;
+} | {
+    __kind__: "flagged";
+    flagged: string;
+} {
+    return "pending" in value ? {
+        __kind__: "pending",
+        pending: value.pending
+    } : "paid" in value ? {
+        __kind__: "paid",
+        paid: value.paid
+    } : "confirmed" in value ? {
+        __kind__: "confirmed",
+        confirmed: value.confirmed
+    } : "flagged" in value ? {
+        __kind__: "flagged",
+        flagged: value.flagged
+    } : value;
 }
-function from_candid_variant_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     cancelled: null;
 } | {
     pending: null;
@@ -998,7 +1398,7 @@ function from_candid_variant_n33(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): ApplicationProcessStatus {
     return "cancelled" in value ? ApplicationProcessStatus.cancelled : "pending" in value ? ApplicationProcessStatus.pending : "verifiedPendingAssignment" in value ? ApplicationProcessStatus.verifiedPendingAssignment : "accepted" in value ? ApplicationProcessStatus.accepted : "declined" in value ? ApplicationProcessStatus.declined : value;
 }
-function from_candid_variant_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     electronicRepair: null;
 } | {
     electrician: null;
@@ -1009,7 +1409,7 @@ function from_candid_variant_n38(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): RepairServiceType {
     return "electronicRepair" in value ? RepairServiceType.electronicRepair : "electrician" in value ? RepairServiceType.electrician : "fridgeRepairWork" in value ? RepairServiceType.fridgeRepairWork : "acTechnician" in value ? RepairServiceType.acTechnician : value;
 }
-function from_candid_variant_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -1018,23 +1418,42 @@ function from_candid_variant_n41(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Electrician>): Array<Electrician> {
+function from_candid_variant_n49(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    ok: null;
+} | {
+    err: string;
+}): {
+    __kind__: "ok";
+    ok: null;
+} | {
+    __kind__: "err";
+    err: string;
+} {
+    return "ok" in value ? {
+        __kind__: "ok",
+        ok: value.ok
+    } : "err" in value ? {
+        __kind__: "err",
+        err: value.err
+    } : value;
+}
+function from_candid_vec_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Electrician>): Array<Electrician> {
     return value.map((x)=>from_candid_Electrician_n17(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WorkOrder>): Array<WorkOrder> {
-    return value.map((x)=>from_candid_WorkOrder_n25(_uploadFile, _downloadFile, x));
+function from_candid_vec_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_WorkOrder>): Array<WorkOrder> {
+    return value.map((x)=>from_candid_WorkOrder_n27(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_RepairServiceType>): Array<RepairServiceType> {
-    return value.map((x)=>from_candid_RepairServiceType_n37(_uploadFile, _downloadFile, x));
+function from_candid_vec_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_RepairServiceType>): Array<RepairServiceType> {
+    return value.map((x)=>from_candid_RepairServiceType_n39(_uploadFile, _downloadFile, x));
 }
-function to_candid_ApplicationProcessStatus_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApplicationProcessStatus): _ApplicationProcessStatus {
-    return to_candid_variant_n44(_uploadFile, _downloadFile, value);
+function to_candid_ApplicationProcessStatus_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApplicationProcessStatus): _ApplicationProcessStatus {
+    return to_candid_variant_n47(_uploadFile, _downloadFile, value);
 }
 function to_candid_ElectricianQualification_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ElectricianQualification): _ElectricianQualification {
     return to_candid_variant_n13(_uploadFile, _downloadFile, value);
 }
-function to_candid_PaymentStatus_n50(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: PaymentStatus): _PaymentStatus {
-    return to_candid_variant_n51(_uploadFile, _downloadFile, value);
+function to_candid_PaymentStatus_n55(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: PaymentStatus): _PaymentStatus {
+    return to_candid_variant_n56(_uploadFile, _downloadFile, value);
 }
 function to_candid_Speciality_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Speciality): _Speciality {
     return to_candid_variant_n9(_uploadFile, _downloadFile, value);
@@ -1045,8 +1464,8 @@ function to_candid_UserRole_n14(_uploadFile: (file: ExternalBlob) => Promise<Uin
 function to_candid_WorkAvailability_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkAvailability): _WorkAvailability {
     return to_candid_variant_n11(_uploadFile, _downloadFile, value);
 }
-function to_candid_WorkOrderStatus_n52(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkOrderStatus): _WorkOrderStatus {
-    return to_candid_variant_n53(_uploadFile, _downloadFile, value);
+function to_candid_WorkOrderStatus_n57(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkOrderStatus): _WorkOrderStatus {
+    return to_candid_variant_n58(_uploadFile, _downloadFile, value);
 }
 function to_candid__CaffeineStorageRefillInformation_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CaffeineStorageRefillInformation): __CaffeineStorageRefillInformation {
     return to_candid_record_n3(_uploadFile, _downloadFile, value);
@@ -1057,19 +1476,19 @@ function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Arra
 function to_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: bigint | null): [] | [bigint] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_opt_n45(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
+function to_candid_opt_n50(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_opt_n46(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Speciality | null): [] | [_Speciality] {
+function to_candid_opt_n51(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Speciality | null): [] | [_Speciality] {
     return value === null ? candid_none() : candid_some(to_candid_Speciality_n8(_uploadFile, _downloadFile, value));
 }
-function to_candid_opt_n47(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: boolean | null): [] | [boolean] {
+function to_candid_opt_n52(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: boolean | null): [] | [boolean] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_opt_n48(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkAvailability | null): [] | [_WorkAvailability] {
+function to_candid_opt_n53(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkAvailability | null): [] | [_WorkAvailability] {
     return value === null ? candid_none() : candid_some(to_candid_WorkAvailability_n10(_uploadFile, _downloadFile, value));
 }
-function to_candid_opt_n49(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ElectricianQualification | null): [] | [_ElectricianQualification] {
+function to_candid_opt_n54(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ElectricianQualification | null): [] | [_ElectricianQualification] {
     return value === null ? candid_none() : candid_some(to_candid_ElectricianQualification_n12(_uploadFile, _downloadFile, value));
 }
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1122,7 +1541,7 @@ function to_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint
         guest: null
     } : value;
 }
-function to_candid_variant_n44(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApplicationProcessStatus): {
+function to_candid_variant_n47(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApplicationProcessStatus): {
     cancelled: null;
 } | {
     pending: null;
@@ -1145,18 +1564,38 @@ function to_candid_variant_n44(_uploadFile: (file: ExternalBlob) => Promise<Uint
         declined: null
     } : value;
 }
-function to_candid_variant_n51(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: PaymentStatus): {
+function to_candid_variant_n56(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    __kind__: "pending";
+    pending: null;
+} | {
+    __kind__: "paid";
+    paid: null;
+} | {
+    __kind__: "confirmed";
+    confirmed: null;
+} | {
+    __kind__: "flagged";
+    flagged: string;
+}): {
     pending: null;
 } | {
     paid: null;
+} | {
+    confirmed: null;
+} | {
+    flagged: string;
 } {
-    return value == PaymentStatus.pending ? {
-        pending: null
-    } : value == PaymentStatus.paid ? {
-        paid: null
+    return value.__kind__ === "pending" ? {
+        pending: value.pending
+    } : value.__kind__ === "paid" ? {
+        paid: value.paid
+    } : value.__kind__ === "confirmed" ? {
+        confirmed: value.confirmed
+    } : value.__kind__ === "flagged" ? {
+        flagged: value.flagged
     } : value;
 }
-function to_candid_variant_n53(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkOrderStatus): {
+function to_candid_variant_n58(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: WorkOrderStatus): {
     cancelled: null;
 } | {
     open: null;

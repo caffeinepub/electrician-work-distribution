@@ -1,22 +1,108 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Move 'Work Order' option under 'Verify Application' section in Work Orders page",
+  "title": "Add Admin Portal with Full Verification Options",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Reorganize the Work Orders page UI to move the 'Work Order' navigation or tab option from the 'Verify' section to appear under the 'Verify Application' section, ensuring clear hierarchy and correct functionality",
+      "summary": "Add dedicated Admin Portal section in sidebar navigation with links to Dashboard, Work Orders, Electricians, Payments, and Verifications, visible only to authenticated admin users",
       "acceptanceCriteria": [
-        "The 'Work Order' option is no longer displayed under the 'Verify' section/tab/group.",
-        "The 'Work Order' option is now visible and accessible under the 'Verify Application' section/tab/group.",
-        "Clicking the 'Work Order' option under 'Verify Application' correctly navigates to or displays the work order content.",
-        "All other sections and options remain unaffected."
+        "Sidebar shows an 'Admin Portal' group with links: Dashboard, Work Orders, Electricians, Payments, Verifications",
+        "Admin Portal links are only visible/accessible to users who pass the admin check (useIsAdmin query)",
+        "Non-admin users see an 'Access Denied' message if they navigate to any admin route directly"
       ],
       "file_operations": [
         {
+          "path": "frontend/src/components/AppSidebar.tsx",
+          "operation": "modify",
+          "description": "Add an 'Admin Portal' collapsible navigation group containing links to Dashboard (/admin/dashboard), Work Orders (/admin/work-orders), Electricians (/admin/electricians), Payments (/admin/payments), and Verifications (/admin/verifications). Wrap the admin group in a conditional render using the useIsAdmin query hook so it only appears for authenticated admin users. Use the existing active-state highlighting pattern. Maintain the current Portal links section and copyright footer."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Add admin routes in the router for /admin/dashboard, /admin/work-orders, /admin/electricians, /admin/payments, and /admin/verifications, each wrapped in ProtectedRoute with admin-only enforcement",
+      "acceptanceCriteria": [
+        "All /admin/* routes redirect unauthenticated users to a login prompt",
+        "All /admin/* routes show 'Access Denied' for authenticated non-admin users",
+        "Each route renders its corresponding admin page component"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add five new admin routes under an '/admin' path prefix: /admin/dashboard (lazy-load Dashboard page), /admin/work-orders (lazy-load WorkOrders page), /admin/electricians (lazy-load Electricians page), /admin/payments (lazy-load Payments page), and /admin/verifications (lazy-load the new Verifications page). Wrap each admin route in ProtectedRoute with adminOnly={true} flag to enforce authentication and admin role checks. Maintain the existing route structure for Landing, Services, Job Board, and My Bookings pages."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Create a Verifications admin page with tabbed sections for Work Order Requests, Electrician Profile Verifications, Job Applications, and Payment Verifications, each with approve/reject actions",
+      "acceptanceCriteria": [
+        "Page displays four tabs: Work Order Requests, Electrician Profiles, Job Applications, Payment Verifications",
+        "Each tab shows a list of items with status badge, key details, and Approve/Reject action buttons",
+        "Approve/Reject actions call the appropriate backend mutations and show a toast on success or failure",
+        "Counts of pending items are shown on each tab label",
+        "Empty state message is shown when there are no pending items in a tab"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/Verifications.tsx",
+          "operation": "create",
+          "description": "Create an admin page component that displays a tabbed interface using shadcn/ui Tabs. Include four tabs: (1) Work Order Requests—fetch pending work orders using usePendingWorkOrders query hook, display each with title, location, priority badge, and verification status, with Approve/Reject buttons calling useApproveWorkOrder and useRejectWorkOrder mutation hooks; (2) Electrician Profiles—fetch pending electricians using usePendingElectricians query hook, display each with name, speciality, qualification, and verification status, with Approve/Reject buttons calling useApproveElectrician and useRejectElectrician mutation hooks; (3) Job Applications—fetch pending job applications using usePendingJobApplications query hook, display each work order with applicant details, with Approve/Reject buttons calling useApproveJobApplication and useRejectJobApplication mutation hooks; (4) Payment Verifications—fetch pending payments using usePendingPayments query hook, display each with work order ID, payment amount, and payment status badge, with Approve/Flag buttons calling useApprovePayment and useFlagPayment mutation hooks. Show pending count badges on each tab label. For reject/flag actions, prompt for a reason/note using a dialog with a textarea. Show success/error toasts after each action. Display an empty state message when a tab has no items. Wrap the page in PageTransition for fade-in animation. Use the existing dark-themed styling and utility classes from index.css."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Add TanStack Query hooks for all new verification backend functions with cache invalidation on success",
+      "acceptanceCriteria": [
+        "All new query hooks return loading, error, and data states",
+        "All new mutation hooks invalidate relevant caches on success",
+        "Hooks are exported from useQueries.ts and usable in the Verifications page"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add four new query hooks: usePendingWorkOrders (calls getPendingWorkOrders), usePendingElectricians (calls getPendingElectricians), usePendingJobApplications (calls getPendingJobApplications), and usePendingPayments (calls getPendingPayments). Add eight new mutation hooks: useApproveWorkOrder (calls approveWorkOrder(id), invalidates ['workOrders', 'pendingWorkOrders']), useRejectWorkOrder (calls rejectWorkOrder(id, reason), invalidates ['workOrders', 'pendingWorkOrders']), useApproveElectrician (calls approveElectrician(id), invalidates ['electricians', 'pendingElectricians']), useRejectElectrician (calls rejectElectrician(id, reason), invalidates ['electricians', 'pendingElectricians']), useApproveJobApplication (calls approveJobApplication(workOrderId, applicantId), invalidates ['workOrders', 'pendingJobApplications']), useRejectJobApplication (calls rejectJobApplication(workOrderId, applicantId, reason), invalidates ['workOrders', 'pendingJobApplications']), useApprovePayment (calls approvePayment(workOrderId), invalidates ['workOrders', 'pendingPayments', 'payments']), and useFlagPayment (calls flagPayment(workOrderId, note), invalidates ['workOrders', 'pendingPayments', 'payments']). Follow the existing pattern in the file using useQuery and useMutation with proper error handling, loading states, and cache invalidation. Export all new hooks."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Ensure all admin portal page transitions, tab switches, modal dialogs, and approve/reject actions use smooth animations consistent with the existing dark-themed design system",
+      "acceptanceCriteria": [
+        "All admin pages are wrapped in PageTransition for fade-in on route change",
+        "Tab switching in Verifications page uses a smooth animated indicator",
+        "Approve and Reject buttons show a brief loading spinner while the mutation is in flight",
+        "Success and error toasts appear with slide-in animation after each action"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/Dashboard.tsx",
+          "operation": "modify",
+          "description": "Wrap the entire Dashboard page content in the PageTransition component to enable fade-in animation on route entry. Maintain all existing functionality and styling."
+        },
+        {
           "path": "frontend/src/pages/WorkOrders.tsx",
           "operation": "modify",
-          "description": "Reorganize the tabs, sections, or navigation elements in the WorkOrders page component to move the 'Work Order' option from being grouped under the 'Verify' section to being grouped under the 'Verify Application' section. Update any conditional rendering, tab structures, or navigation logic to reflect this new hierarchy. Ensure that clicking the moved option correctly displays or navigates to the work order content and that all other sections (status updates, accept/decline actions, verification, rating submissions) continue to function correctly."
+          "description": "Wrap the entire WorkOrders page content in the PageTransition component to enable fade-in animation on route entry. Ensure tab switching uses smooth transition by leveraging shadcn/ui Tabs default animation. Maintain all existing functionality and styling."
+        },
+        {
+          "path": "frontend/src/pages/Electricians.tsx",
+          "operation": "modify",
+          "description": "Wrap the entire Electricians page content in the PageTransition component to enable fade-in animation on route entry. Ensure all mutation buttons (add, edit, delete) show loading spinners using the mutation hook's isPending state. Maintain all existing functionality and styling."
+        },
+        {
+          "path": "frontend/src/pages/Payments.tsx",
+          "operation": "modify",
+          "description": "Wrap the entire Payments page content in the PageTransition component to enable fade-in animation on route entry. Ensure the edit payment dialog's save button shows a loading spinner using the mutation hook's isPending state. Maintain all existing functionality and styling."
+        },
+        {
+          "path": "frontend/src/pages/Verifications.tsx",
+          "operation": "modify",
+          "description": "Ensure all Approve, Reject, and Flag buttons display a loading spinner (using a Loader2 icon with spin animation) while their respective mutation hooks are in the isPending state. Use the Toaster component's default slide-in animation for success and error messages. Leverage shadcn/ui Tabs component's default smooth animated indicator for tab switches. Ensure the reject/flag reason dialog has smooth open/close transitions using shadcn/ui Dialog's default animations."
         }
       ]
     }

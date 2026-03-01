@@ -1,34 +1,105 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T16:04:54.282Z",
+  "generatedAt": "2026-03-01T15:51:10.181Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 6,
+    "implemented": 5,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "In the Work Orders page (frontend/src/pages/WorkOrders.tsx), move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section. Ensure the UI reflects this hierarchy clearly and the option functions correctly in its new location.",
+        "summary": "Add a dedicated Admin Portal section accessible via the sidebar navigation (visible only to authenticated admin users), with a clear 'Admin Portal' label and sub-navigation links for Dashboard, Work Orders, Electricians, Payments, and a new Verifications section.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/WorkOrders.tsx"
+          "frontend/src/components/AppSidebar.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/WorkOrders.tsx"
+          "frontend/src/components/AppSidebar.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Add admin routes in the router for /admin/dashboard, /admin/work-orders, /admin/electricians, /admin/payments, and /admin/verifications, each wrapped in ProtectedRoute with admin-only enforcement.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Create a Verifications admin page (/admin/verifications) that lists all pending verification items in tabbed sections: (1) New Work Order Requests — verify and approve or reject incoming work orders before they become active; (2) Electrician Profile Verifications — verify electrician credentials/documents and approve or reject their profiles; (3) Job Applications — verify and approve or reject applications submitted by workers on open work orders; (4) Payment Verifications — verify payment records and mark them as confirmed or flag for review.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/Verifications.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/Verifications.tsx"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Add backend functions to support verification workflows: approveWorkOrder(id), rejectWorkOrder(id, reason), approveElectrician(id), rejectElectrician(id, reason), approveJobApplication(workOrderId, applicantId), rejectJobApplication(workOrderId, applicantId, reason), approvePayment(workOrderId), and flagPayment(workOrderId, note). All functions must be admin-only and update the relevant record status.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Add TanStack Query hooks for all new verification backend functions in useQueries.ts: query hooks to fetch pending work orders, pending electrician profiles, pending job applications, and pending payments; mutation hooks for all approve/reject/flag actions with cache invalidation on success.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Ensure all admin portal page transitions, tab switches, modal dialogs, and approve/reject actions use smooth animations (fade-in for pages via PageTransition, animated tab underlines, and subtle button press feedback) consistent with the existing dark-themed design system.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/Dashboard.tsx",
+          "frontend/src/pages/WorkOrders.tsx",
+          "frontend/src/pages/Electricians.tsx",
+          "frontend/src/pages/Payments.tsx",
+          "frontend/src/pages/Verifications.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/Dashboard.tsx",
+          "frontend/src/pages/Payments.tsx",
+          "frontend/src/pages/Verifications.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/pages/WorkOrders.tsx",
+    "frontend/src/App.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/AppSidebar.tsx",
+    "frontend/src/components/PaymentStatusBadge.tsx",
+    "frontend/src/components/ProtectedRoute.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/lib/utils.ts",
+    "frontend/src/pages/Dashboard.tsx",
+    "frontend/src/pages/Payments.tsx",
+    "frontend/src/pages/Verifications.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

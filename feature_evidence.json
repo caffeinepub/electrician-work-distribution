@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-in-the-work-orders-page-frontend-src-pages-workorders-tsx-move-the-work-order-navigation-or-tab-option-so-that-it-appears-under-the-verify-application-section-instead-of-being-grouped-under-the-verify-section-ensure-the-ui-reflects-this-hierarchy-clearly-and-the-option-functions-correctly-in-its-new-location",
-      "featureTitle": "In the Work Orders page (frontend/src/pages/WorkOrders.tsx), move the 'Work Order' navigation or tab option so that it appears under the 'Verify Application' section instead of being grouped under the 'Verify' section. Ensure the UI reflects this hierarchy clearly and the option functions correctly in its new location.",
+      "featureId": "feature-add-a-dedicated-admin-portal-section-accessible-via-the-sidebar-navigation-visible-only-to-authenticated-admin-users-with-a-clear-admin-portal-label-and-sub-navigation-links-for-dashboard-work-orders-electricians-payments-and-a-new-verifications-section",
+      "featureTitle": "Add a dedicated Admin Portal section accessible via the sidebar navigation (visible only to authenticated admin users), with a clear 'Admin Portal' label and sub-navigation links for Dashboard, Work Orders, Electricians, Payments, and a new Verifications section.",
       "files": [
-        "frontend/src/pages/WorkOrders.tsx"
+        "frontend/src/components/AppSidebar.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -18,6 +18,88 @@
       ],
       "testIds": [
         "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-admin-routes-in-the-router-for-admin-dashboard-admin-work-orders-admin-electricians-admin-payments-and-admin-verifications-each-wrapped-in-protectedroute-with-admin-only-enforcement",
+      "featureTitle": "Add admin routes in the router for /admin/dashboard, /admin/work-orders, /admin/electricians, /admin/payments, and /admin/verifications, each wrapped in ProtectedRoute with admin-only enforcement.",
+      "files": [
+        "frontend/src/App.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-a-verifications-admin-page-admin-verifications-that-lists-all-pending-verification-items-in-tabbed-sections-1-new-work-order-requests-verify-and-approve-or-reject-incoming-work-orders-before-they-become-active-2-electrician-profile-verifications-verify-electrician-credentials-documents-and-approve-or-reject-their-profiles-3-job-applications-verify-and-approve-or-reject-applications-submitted-by-workers-on-open-work-orders-4-payment-verifications-verify-payment-records-and-mark-them-as-confirmed-or-flag-for-review",
+      "featureTitle": "Create a Verifications admin page (/admin/verifications) that lists all pending verification items in tabbed sections: (1) New Work Order Requests — verify and approve or reject incoming work orders before they become active; (2) Electrician Profile Verifications — verify electrician credentials/documents and approve or reject their profiles; (3) Job Applications — verify and approve or reject applications submitted by workers on open work orders; (4) Payment Verifications — verify payment records and mark them as confirmed or flag for review.",
+      "files": [
+        "frontend/src/pages/Verifications.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-tanstack-query-hooks-for-all-new-verification-backend-functions-in-usequeries-ts-query-hooks-to-fetch-pending-work-orders-pending-electrician-profiles-pending-job-applications-and-pending-payments-mutation-hooks-for-all-approve-reject-flag-actions-with-cache-invalidation-on-success",
+      "featureTitle": "Add TanStack Query hooks for all new verification backend functions in useQueries.ts: query hooks to fetch pending work orders, pending electrician profiles, pending job applications, and pending payments; mutation hooks for all approve/reject/flag actions with cache invalidation on success.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-all-admin-portal-page-transitions-tab-switches-modal-dialogs-and-approve-reject-actions-use-smooth-animations-fade-in-for-pages-via-pagetransition-animated-tab-underlines-and-subtle-button-press-feedback-consistent-with-the-existing-dark-themed-design-system",
+      "featureTitle": "Ensure all admin portal page transitions, tab switches, modal dialogs, and approve/reject actions use smooth animations (fade-in for pages via PageTransition, animated tab underlines, and subtle button press feedback) consistent with the existing dark-themed design system.",
+      "files": [
+        "frontend/src/pages/Dashboard.tsx",
+        "frontend/src/pages/Payments.tsx",
+        "frontend/src/pages/Verifications.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-6"
       ],
       "confidence": "high"
     }

@@ -38,6 +38,12 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const VerificationStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'verifiedPendingAssignment' : IDL.Null,
+  'rejected' : IDL.Text,
+});
 export const Electrician = IDL.Record({
   'id' : IDL.Nat,
   'paymentMethod' : IDL.Text,
@@ -50,6 +56,7 @@ export const Electrician = IDL.Record({
   'currency' : IDL.Text,
   'address' : IDL.Text,
   'qualification' : ElectricianQualification,
+  'verificationStatus' : VerificationStatus,
 });
 export const WorkOrderStatus = IDL.Variant({
   'cancelled' : IDL.Null,
@@ -60,6 +67,8 @@ export const WorkOrderStatus = IDL.Variant({
 export const PaymentStatus = IDL.Variant({
   'pending' : IDL.Null,
   'paid' : IDL.Null,
+  'confirmed' : IDL.Null,
+  'flagged' : IDL.Text,
 });
 export const Rating = IDL.Record({ 'comment' : IDL.Text, 'rating' : IDL.Nat });
 export const Time = IDL.Int;
@@ -89,6 +98,7 @@ export const WorkOrder = IDL.Record({
   'customerEmail' : IDL.Text,
   'paymentAmount' : IDL.Nat,
   'location' : IDL.Text,
+  'verificationStatus' : VerificationStatus,
 });
 export const PublicJobAlertSubscription = IDL.Record({ 'subscribedAt' : Time });
 export const RepairServiceType = IDL.Variant({
@@ -106,6 +116,13 @@ export const WorkOrderApplication = IDL.Record({
   'appliedAt' : Time,
   'workOrderId' : IDL.Nat,
 });
+export const ChecklistItem = IDL.Record({
+  'id' : IDL.Text,
+  'order' : IDL.Nat,
+  'completed' : IDL.Bool,
+  'taskLabel' : IDL.Text,
+});
+export const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
 
 export const idlService = IDL.Service({
   '_caffeineStorageBlobIsLive' : IDL.Func(
@@ -152,8 +169,27 @@ export const idlService = IDL.Service({
       [],
     ),
   'applyForWorkOrder' : IDL.Func([IDL.Nat], [], []),
+  'approveElectrician' : IDL.Func([IDL.Nat], [], []),
+  'approveJobApplication' : IDL.Func([IDL.Nat, IDL.Principal], [], []),
+  'approvePayment' : IDL.Func([IDL.Nat], [], []),
+  'approveWorkOrder' : IDL.Func([IDL.Nat], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'assignElectricianToWorkOrder' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'createFixedPriceWorkOrder' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Nat,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        ElectricianQualification,
+      ],
+      [IDL.Nat],
+      [],
+    ),
   'createWorkOrder' : IDL.Func(
       [
         IDL.Text,
@@ -174,6 +210,7 @@ export const idlService = IDL.Service({
   'declineWorkOrder' : IDL.Func([IDL.Nat], [], []),
   'findElectricianById' : IDL.Func([IDL.Nat], [Electrician], ['query']),
   'findWorkOrderById' : IDL.Func([IDL.Nat], [WorkOrder], ['query']),
+  'flagPayment' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'getAllElectricians' : IDL.Func([], [IDL.Vec(Electrician)], ['query']),
   'getAllJobAlertSubscriptions' : IDL.Func(
       [],
@@ -189,14 +226,24 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCurrentUserWorkOrders' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
+  'getPendingElectricians' : IDL.Func([], [IDL.Vec(Electrician)], ['query']),
+  'getPendingJobApplications' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
+  'getPendingPayments' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
+  'getPendingWorkOrders' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'getVerifiedApplications' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
   'getWorkOrderApplication' : IDL.Func(
       [IDL.Nat],
       [IDL.Opt(WorkOrderApplication)],
+      ['query'],
+    ),
+  'getWorkOrderConfirmation' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Record({ 'status' : WorkOrderStatus, 'workOrderId' : IDL.Nat })],
       ['query'],
     ),
   'getWorkOrdersByApplicationStatus' : IDL.Func(
@@ -209,8 +256,16 @@ export const idlService = IDL.Service({
       [IDL.Vec(WorkOrder)],
       ['query'],
     ),
+  'getWorkerChecklist' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(ChecklistItem)],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isSubscribedToJobAlerts' : IDL.Func([], [IDL.Bool], ['query']),
+  'rejectElectrician' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+  'rejectJobApplication' : IDL.Func([IDL.Nat, IDL.Principal, IDL.Text], [], []),
+  'rejectWorkOrder' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'removeElectrician' : IDL.Func([IDL.Nat], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'submitCustomerRating' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
@@ -219,6 +274,11 @@ export const idlService = IDL.Service({
   'updateApplicationStatusForWorkOrder' : IDL.Func(
       [IDL.Nat, ApplicationProcessStatus],
       [],
+      [],
+    ),
+  'updateChecklistItem' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Bool],
+      [Result],
       [],
     ),
   'updateElectrician' : IDL.Func(
@@ -244,7 +304,8 @@ export const idlService = IDL.Service({
       [],
     ),
   'updateWorkOrderStatus' : IDL.Func([IDL.Nat, WorkOrderStatus], [], []),
-  'verifyWorkOrderApplication' : IDL.Func([IDL.Nat], [], []),
+  'verifyAndMoveToQueue' : IDL.Func([IDL.Nat], [], []),
+  'verifyApplication' : IDL.Func([IDL.Nat], [], []),
 });
 
 export const idlInitArgs = [];
@@ -280,6 +341,12 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const VerificationStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'verifiedPendingAssignment' : IDL.Null,
+    'rejected' : IDL.Text,
+  });
   const Electrician = IDL.Record({
     'id' : IDL.Nat,
     'paymentMethod' : IDL.Text,
@@ -292,6 +359,7 @@ export const idlFactory = ({ IDL }) => {
     'currency' : IDL.Text,
     'address' : IDL.Text,
     'qualification' : ElectricianQualification,
+    'verificationStatus' : VerificationStatus,
   });
   const WorkOrderStatus = IDL.Variant({
     'cancelled' : IDL.Null,
@@ -302,6 +370,8 @@ export const idlFactory = ({ IDL }) => {
   const PaymentStatus = IDL.Variant({
     'pending' : IDL.Null,
     'paid' : IDL.Null,
+    'confirmed' : IDL.Null,
+    'flagged' : IDL.Text,
   });
   const Rating = IDL.Record({ 'comment' : IDL.Text, 'rating' : IDL.Nat });
   const Time = IDL.Int;
@@ -331,6 +401,7 @@ export const idlFactory = ({ IDL }) => {
     'customerEmail' : IDL.Text,
     'paymentAmount' : IDL.Nat,
     'location' : IDL.Text,
+    'verificationStatus' : VerificationStatus,
   });
   const PublicJobAlertSubscription = IDL.Record({ 'subscribedAt' : Time });
   const RepairServiceType = IDL.Variant({
@@ -345,6 +416,13 @@ export const idlFactory = ({ IDL }) => {
     'appliedAt' : Time,
     'workOrderId' : IDL.Nat,
   });
+  const ChecklistItem = IDL.Record({
+    'id' : IDL.Text,
+    'order' : IDL.Nat,
+    'completed' : IDL.Bool,
+    'taskLabel' : IDL.Text,
+  });
+  const Result = IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text });
   
   return IDL.Service({
     '_caffeineStorageBlobIsLive' : IDL.Func(
@@ -391,8 +469,27 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'applyForWorkOrder' : IDL.Func([IDL.Nat], [], []),
+    'approveElectrician' : IDL.Func([IDL.Nat], [], []),
+    'approveJobApplication' : IDL.Func([IDL.Nat, IDL.Principal], [], []),
+    'approvePayment' : IDL.Func([IDL.Nat], [], []),
+    'approveWorkOrder' : IDL.Func([IDL.Nat], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'assignElectricianToWorkOrder' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'createFixedPriceWorkOrder' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Nat,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          ElectricianQualification,
+        ],
+        [IDL.Nat],
+        [],
+      ),
     'createWorkOrder' : IDL.Func(
         [
           IDL.Text,
@@ -413,6 +510,7 @@ export const idlFactory = ({ IDL }) => {
     'declineWorkOrder' : IDL.Func([IDL.Nat], [], []),
     'findElectricianById' : IDL.Func([IDL.Nat], [Electrician], ['query']),
     'findWorkOrderById' : IDL.Func([IDL.Nat], [WorkOrder], ['query']),
+    'flagPayment' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'getAllElectricians' : IDL.Func([], [IDL.Vec(Electrician)], ['query']),
     'getAllJobAlertSubscriptions' : IDL.Func(
         [],
@@ -428,14 +526,24 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCurrentUserWorkOrders' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
+    'getPendingElectricians' : IDL.Func([], [IDL.Vec(Electrician)], ['query']),
+    'getPendingJobApplications' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
+    'getPendingPayments' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
+    'getPendingWorkOrders' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'getVerifiedApplications' : IDL.Func([], [IDL.Vec(WorkOrder)], ['query']),
     'getWorkOrderApplication' : IDL.Func(
         [IDL.Nat],
         [IDL.Opt(WorkOrderApplication)],
+        ['query'],
+      ),
+    'getWorkOrderConfirmation' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Record({ 'status' : WorkOrderStatus, 'workOrderId' : IDL.Nat })],
         ['query'],
       ),
     'getWorkOrdersByApplicationStatus' : IDL.Func(
@@ -448,8 +556,20 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(WorkOrder)],
         ['query'],
       ),
+    'getWorkerChecklist' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(ChecklistItem)],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isSubscribedToJobAlerts' : IDL.Func([], [IDL.Bool], ['query']),
+    'rejectElectrician' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+    'rejectJobApplication' : IDL.Func(
+        [IDL.Nat, IDL.Principal, IDL.Text],
+        [],
+        [],
+      ),
+    'rejectWorkOrder' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'removeElectrician' : IDL.Func([IDL.Nat], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'submitCustomerRating' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
@@ -458,6 +578,11 @@ export const idlFactory = ({ IDL }) => {
     'updateApplicationStatusForWorkOrder' : IDL.Func(
         [IDL.Nat, ApplicationProcessStatus],
         [],
+        [],
+      ),
+    'updateChecklistItem' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Bool],
+        [Result],
         [],
       ),
     'updateElectrician' : IDL.Func(
@@ -483,7 +608,8 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'updateWorkOrderStatus' : IDL.Func([IDL.Nat, WorkOrderStatus], [], []),
-    'verifyWorkOrderApplication' : IDL.Func([IDL.Nat], [], []),
+    'verifyAndMoveToQueue' : IDL.Func([IDL.Nat], [], []),
+    'verifyApplication' : IDL.Func([IDL.Nat], [], []),
   });
 };
 

@@ -1,19 +1,20 @@
-import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
-import AppSidebar from './AppSidebar';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useQueryClient } from '@tanstack/react-query';
-import { LogIn, LogOut, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import AppSidebar from "./AppSidebar";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, LogIn, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { login, clear, loginStatus, identity, isInitializing } = useInternetIdentity();
+  const { login, clear, loginStatus, identity } = useInternetIdentity();
   const queryClient = useQueryClient();
+
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
+  const isLoggingIn = loginStatus === "logging-in";
 
   const handleAuth = async () => {
     if (isAuthenticated) {
@@ -22,8 +23,9 @@ export default function Layout({ children }: LayoutProps) {
     } else {
       try {
         await login();
-      } catch (error: any) {
-        if (error.message === 'User is already authenticated') {
+      } catch (error: unknown) {
+        const err = error as { message?: string };
+        if (err?.message === "User is already authenticated") {
           await clear();
           setTimeout(() => login(), 300);
         }
@@ -32,52 +34,51 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <SidebarProvider>
+    <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
-      <SidebarInset>
-        <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur px-4">
+      <SidebarInset className="flex flex-col flex-1 min-w-0">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <SidebarTrigger className="text-foreground" />
+            <SidebarTrigger className="text-foreground/70 hover:text-foreground" />
             <img
               src="/assets/generated/technical-tech-logo.dim_500x500.png"
               alt="Technical Tech"
-              className="h-10 w-auto object-contain"
+              className="h-10 w-10 object-contain"
             />
+            <span className="font-heading text-xl font-bold text-foreground tracking-wide hidden sm:block">
+              Technical Tech
+            </span>
           </div>
-          <div className="flex items-center gap-3">
-            {isInitializing ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                {isAuthenticated && (
-                  <span className="text-sm text-muted-foreground hidden sm:block">
-                    {identity?.getPrincipal().toString().slice(0, 12)}...
-                  </span>
-                )}
-                <Button
-                  variant={isAuthenticated ? 'outline' : 'default'}
-                  size="sm"
-                  onClick={handleAuth}
-                  disabled={isLoggingIn}
-                  className="gap-2"
-                >
-                  {isLoggingIn ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isAuthenticated ? (
-                    <LogOut className="h-4 w-4" />
-                  ) : (
-                    <LogIn className="h-4 w-4" />
-                  )}
-                  {isLoggingIn ? 'Logging in...' : isAuthenticated ? 'Logout' : 'Login'}
-                </Button>
-              </>
+          <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <span className="text-xs text-muted-foreground hidden sm:block">
+                Logged in
+              </span>
             )}
+            <Button
+              variant={isAuthenticated ? "outline" : "default"}
+              size="sm"
+              onClick={handleAuth}
+              disabled={isLoggingIn}
+              className="gap-2"
+            >
+              {isLoggingIn ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isAuthenticated ? (
+                <LogOut className="h-4 w-4" />
+              ) : (
+                <LogIn className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isLoggingIn ? "Logging in..." : isAuthenticated ? "Logout" : "Login"}
+              </span>
+            </Button>
           </div>
         </header>
         <main className="flex-1 overflow-auto">
           {children}
         </main>
       </SidebarInset>
-    </SidebarProvider>
+    </div>
   );
 }
