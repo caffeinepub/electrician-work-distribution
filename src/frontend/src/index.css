@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: oklch(0.13 0.02 260);
+    --foreground: oklch(0.95 0.01 260);
+
+    --card: oklch(0.17 0.02 260);
+    --card-foreground: oklch(0.95 0.01 260);
+
+    --popover: oklch(0.17 0.02 260);
+    --popover-foreground: oklch(0.95 0.01 260);
+
+    --primary: oklch(0.75 0.18 60);
+    --primary-foreground: oklch(0.13 0.02 260);
+
+    --secondary: oklch(0.22 0.02 260);
+    --secondary-foreground: oklch(0.9 0.01 260);
+
+    --muted: oklch(0.22 0.02 260);
+    --muted-foreground: oklch(0.6 0.02 260);
+
+    --accent: oklch(0.22 0.02 260);
+    --accent-foreground: oklch(0.9 0.01 260);
+
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.95 0.01 260);
+
+    --border: oklch(0.28 0.02 260);
+    --input: oklch(0.22 0.02 260);
+    --ring: oklch(0.75 0.18 60);
+
+    --success: oklch(0.6 0.18 145);
+    --warning: oklch(0.75 0.18 60);
+
+    --radius: 0.5rem;
+
+    /* Sidebar forced dark */
+    --sidebar-background: oklch(0.1 0.02 260);
+    --sidebar-foreground: oklch(0.95 0.01 260);
+    --sidebar-primary: oklch(0.75 0.18 60);
+    --sidebar-primary-foreground: oklch(0.13 0.02 260);
+    --sidebar-accent: oklch(0.18 0.02 260);
+    --sidebar-accent-foreground: oklch(0.95 0.01 260);
+    --sidebar-border: oklch(0.22 0.02 260);
+    --sidebar-ring: oklch(0.75 0.18 60);
+  }
+
+  .light {
+    --background: oklch(0.13 0.02 260);
+    --foreground: oklch(0.95 0.01 260);
+    --card: oklch(0.17 0.02 260);
+    --card-foreground: oklch(0.95 0.01 260);
+    --popover: oklch(0.17 0.02 260);
+    --popover-foreground: oklch(0.95 0.01 260);
+    --primary: oklch(0.75 0.18 60);
+    --primary-foreground: oklch(0.13 0.02 260);
+    --secondary: oklch(0.22 0.02 260);
+    --secondary-foreground: oklch(0.9 0.01 260);
+    --muted: oklch(0.22 0.02 260);
+    --muted-foreground: oklch(0.6 0.02 260);
+    --accent: oklch(0.22 0.02 260);
+    --accent-foreground: oklch(0.9 0.01 260);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.95 0.01 260);
+    --border: oklch(0.28 0.02 260);
+    --input: oklch(0.22 0.02 260);
+    --ring: oklch(0.75 0.18 60);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Badge utility classes */
+  .badge {
+    @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset;
+  }
+
+  .badge-amber {
+    @apply bg-amber-400/10 text-amber-400 ring-amber-400/20;
+  }
+
+  .badge-success {
+    @apply bg-emerald-400/10 text-emerald-400 ring-emerald-400/20;
+  }
+
+  .badge-danger {
+    @apply bg-red-400/10 text-red-400 ring-red-400/20;
+  }
+
+  .badge-neutral {
+    @apply bg-zinc-400/10 text-zinc-400 ring-zinc-400/20;
+  }
+
+  .badge-blue {
+    @apply bg-blue-400/10 text-blue-400 ring-blue-400/20;
+  }
+
+  .badge-open {
+    @apply bg-blue-400/10 text-blue-400 ring-blue-400/20;
+  }
+
+  .badge-inprogress {
+    @apply bg-amber-400/10 text-amber-400 ring-amber-400/20;
+  }
+
+  .badge-completed {
+    @apply bg-emerald-400/10 text-emerald-400 ring-emerald-400/20;
+  }
+
+  .badge-cancelled {
+    @apply bg-zinc-400/10 text-zinc-400 ring-zinc-400/20;
+  }
+
+  .badge-low {
+    @apply bg-zinc-400/10 text-zinc-400 ring-zinc-400/20;
+  }
+
+  .badge-medium {
+    @apply bg-blue-400/10 text-blue-400 ring-blue-400/20;
+  }
+
+  .badge-high {
+    @apply bg-orange-400/10 text-orange-400 ring-orange-400/20;
+  }
+
+  .badge-urgent {
+    @apply bg-red-400/10 text-red-400 ring-red-400/20;
+  }
+
+  .badge-paid {
+    @apply bg-emerald-400/10 text-emerald-400 ring-emerald-400/20;
+  }
+
+  .badge-pending-payment {
+    @apply bg-amber-400/10 text-amber-400 ring-amber-400/20;
+  }
+
+  .badge-overdue {
+    @apply bg-red-400/10 text-red-400 ring-red-400/20;
+  }
+
+  /* Application process status badges */
+  .badge-app-pending {
+    @apply bg-amber-400/10 text-amber-400 ring-amber-400/20;
+  }
+
+  .badge-app-verified {
+    @apply bg-blue-400/10 text-blue-400 ring-blue-400/20;
+  }
+
+  .badge-app-accepted {
+    @apply bg-emerald-400/10 text-emerald-400 ring-emerald-400/20;
+  }
+
+  .badge-app-declined {
+    @apply bg-zinc-400/10 text-zinc-400 ring-zinc-400/20;
+  }
+}
+
+/* Sidebar dark overrides */
+[data-sidebar] {
+  background-color: oklch(0.1 0.02 260) !important;
+  color: oklch(0.95 0.01 260) !important;
+}
+
+[data-sidebar] [data-sidebar-menu-button] {
+  color: oklch(0.85 0.01 260) !important;
+}
+
+[data-sidebar] [data-sidebar-menu-button]:hover,
+[data-sidebar] [data-sidebar-menu-button][data-active="true"] {
+  background-color: oklch(0.18 0.02 260) !important;
+  color: oklch(0.75 0.18 60) !important;
+}
+
+[data-sidebar] [data-sidebar-group-label] {
+  color: oklch(0.55 0.02 260) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(0.17 0.02 260);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.3 0.02 260);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.4 0.02 260);
+}
