@@ -43,8 +43,8 @@ import {
   useRejectJobApplication,
   useRejectWorkOrder,
 } from "../hooks/useQueries";
+import { getQualificationLabel, getSpecialityLabel } from "../lib/helpers";
 import type { WorkOrder } from "../lib/types";
-import { getQualificationLabel, getSpecialityLabel } from "../lib/utils";
 
 export default function Verifications() {
   const { data: pendingWorkOrders = [], isLoading: woLoading } =
@@ -113,7 +113,7 @@ export default function Verifications() {
         </p>
       </div>
 
-      <Tabs defaultValue="workOrders">
+      <Tabs defaultValue="jobApps">
         <TabsList className="mb-6 flex-wrap h-auto gap-1">
           <TabsTrigger value="workOrders" className="flex items-center gap-1.5">
             <ClipboardList className="w-3.5 h-3.5" />
@@ -351,7 +351,7 @@ function EmptyState({ message }: { message: string }) {
 
 interface WorkOrderVerifyCardProps {
   order: WorkOrder;
-  onApprove: () => void;
+  onApprove: () => Promise<void> | void;
   onReject: () => void;
   isApproving: boolean;
 }
@@ -362,8 +362,15 @@ function WorkOrderVerifyCard({
   onReject,
   isApproving,
 }: WorkOrderVerifyCardProps) {
+  const [confirmed, setConfirmed] = React.useState(false);
+
+  const handleApprove = async () => {
+    await onApprove();
+    setConfirmed(true);
+  };
+
   return (
-    <Card>
+    <Card className="bg-white text-gray-900">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-base">
@@ -388,20 +395,26 @@ function WorkOrderVerifyCard({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={onApprove}
-            disabled={isApproving}
-            className="text-green-400 border-green-400/30 bg-green-400/10 hover:bg-green-400/20"
-            variant="outline"
-          >
-            {isApproving ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-            ) : (
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-            )}
-            Approve
-          </Button>
+          {confirmed ? (
+            <Badge className="bg-green-500 text-white px-3 py-1 text-sm flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />✓ Job Confirmed
+            </Badge>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleApprove}
+              disabled={isApproving}
+              className="text-green-400 border-green-400/30 bg-green-400/10 hover:bg-green-400/20"
+              variant="outline"
+            >
+              {isApproving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+              )}
+              Approve
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -431,7 +444,7 @@ function ElectricianVerifyCard({
   isApproving,
 }: ElectricianVerifyCardProps) {
   return (
-    <Card>
+    <Card className="bg-white text-gray-900">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <CardTitle className="text-base">{electrician.name}</CardTitle>

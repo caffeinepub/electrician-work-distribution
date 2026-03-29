@@ -1,5 +1,5 @@
 import React from "react";
-import { getPriorityClass, getPriorityLabel } from "../lib/utils";
+import { getPriorityClass, getPriorityLabel } from "../lib/helpers";
 
 interface PriorityBadgeProps {
   priority: number | bigint | string;

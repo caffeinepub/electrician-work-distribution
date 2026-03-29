@@ -1,6 +1,6 @@
 import React from "react";
+import { getStatusClass, getStatusLabel } from "../lib/helpers";
 import type { WorkOrderStatus } from "../lib/types";
-import { getStatusClass, getStatusLabel } from "../lib/utils";
 
 interface StatusBadgeProps {
   status: WorkOrderStatus | string;

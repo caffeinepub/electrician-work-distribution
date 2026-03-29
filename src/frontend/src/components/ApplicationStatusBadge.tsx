@@ -1,9 +1,9 @@
 import React from "react";
-import type { ApplicationProcessStatus } from "../lib/types";
 import {
   getApplicationStatusClass,
   getApplicationStatusLabel,
-} from "../lib/utils";
+} from "../lib/helpers";
+import type { ApplicationProcessStatus } from "../lib/types";
 
 interface ApplicationStatusBadgeProps {
   status: ApplicationProcessStatus | string;

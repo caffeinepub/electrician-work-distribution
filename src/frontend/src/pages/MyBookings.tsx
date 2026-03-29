@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  Search,
   Star,
 } from "lucide-react";
 import React, { useState } from "react";
@@ -26,7 +28,6 @@ import {
   useSubmitWorkerRating,
 } from "../hooks/useQueries";
 import type { WorkOrder } from "../lib/types";
-import { formatTimestamp } from "../lib/utils";
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("en-IN", {
@@ -36,9 +37,27 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
+function SearchBar({
+  value,
+  onChange,
+}: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <Input
+        className="pl-9 bg-background"
+        placeholder="Search bookings by service, status..."
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 export default function MyBookings() {
   const { data: workOrders = [], isLoading } = useGetCurrentUserWorkOrders();
   const submitRatingMutation = useSubmitWorkerRating();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [ratingDialog, setRatingDialog] = useState<{
     open: boolean;
@@ -47,10 +66,20 @@ export default function MyBookings() {
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
 
-  const ongoingOrders = workOrders.filter(
+  const filtered = workOrders.filter((wo) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      wo.title.toLowerCase().includes(q) ||
+      (wo.description ?? "").toLowerCase().includes(q) ||
+      wo.status.toLowerCase().includes(q)
+    );
+  });
+
+  const ongoingOrders = filtered.filter(
     (wo) => wo.status === "open" || wo.status === "inProgress",
   );
-  const pastOrders = workOrders.filter(
+  const pastOrders = filtered.filter(
     (wo) => wo.status === "completed" || wo.status === "cancelled",
   );
 
@@ -81,7 +110,7 @@ export default function MyBookings() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <CalendarCheck className="w-8 h-8 text-primary" />
           My Bookings
@@ -90,6 +119,13 @@ export default function MyBookings() {
           Track your service requests.
         </p>
       </div>
+
+      {/* Search bar — TOP */}
+      {workOrders.length > 0 && (
+        <div className="mb-6">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
+        </div>
+      )}
 
       {workOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -104,9 +140,18 @@ export default function MyBookings() {
             started.
           </p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Search className="w-10 h-10 text-muted-foreground mb-3" />
+          <h2 className="text-lg font-semibold text-foreground mb-1">
+            No results found
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Try a different search term.
+          </p>
+        </div>
       ) : (
         <div className="space-y-8">
-          {/* Ongoing */}
           {ongoingOrders.length > 0 && (
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -127,7 +172,6 @@ export default function MyBookings() {
             </section>
           )}
 
-          {/* Past */}
           {pastOrders.length > 0 && (
             <section>
               <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -147,6 +191,13 @@ export default function MyBookings() {
               </div>
             </section>
           )}
+        </div>
+      )}
+
+      {/* Search bar — BOTTOM */}
+      {workOrders.length > 0 && (
+        <div className="mt-10">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
       )}
 

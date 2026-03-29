@@ -42,8 +42,8 @@ import {
   useGetAllWorkOrders,
   useUpdateWorkOrderPayment,
 } from "../hooks/useQueries";
+import { formatTimestamp } from "../lib/helpers";
 import type { PaymentStatus } from "../lib/types";
-import { formatTimestamp } from "../lib/utils";
 
 function makePaymentStatus(
   kind: PaymentStatusKind,

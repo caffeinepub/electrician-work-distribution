@@ -43,27 +43,45 @@ const FEATURES = [
   },
 ];
 
-const NAV_CARDS = [
+const ROLE_CARDS = [
   {
-    title: "Browse Services",
-    description: "Explore all available repair and electrical services.",
-    href: "/services",
-    icon: Zap,
-    cta: "View Services",
+    role: "Admin",
+    description: "Manage orders, verifications & payments",
+    href: "/admin/dashboard",
+    icon: ShieldCheck,
+    gradient: "from-amber-500/20 to-amber-600/5",
+    border: "border-amber-500/40 hover:border-amber-400",
+    iconBg: "bg-amber-500/15",
+    iconColor: "text-amber-400",
+    badge: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    cta: "Open Portal",
+    ocid: "landing.admin_button",
   },
   {
-    title: "Job Board",
-    description: "Find open service requests and apply as a technician.",
+    role: "Customer",
+    description: "Book a service at your doorstep",
+    href: "/services",
+    icon: CalendarCheck,
+    gradient: "from-blue-500/20 to-blue-600/5",
+    border: "border-blue-500/40 hover:border-blue-400",
+    iconBg: "bg-blue-500/15",
+    iconColor: "text-blue-400",
+    badge: "bg-blue-500/10 text-blue-300 border-blue-500/30",
+    cta: "Book Now",
+    ocid: "landing.customer_button",
+  },
+  {
+    role: "Employee",
+    description: "Apply for jobs & manage work",
     href: "/jobs",
     icon: Briefcase,
-    cta: "Browse Jobs",
-  },
-  {
-    title: "My Bookings",
-    description: "Track your ongoing and past service requests.",
-    href: "/my-bookings",
-    icon: Star,
-    cta: "View Bookings",
+    gradient: "from-emerald-500/20 to-emerald-600/5",
+    border: "border-emerald-500/40 hover:border-emerald-400",
+    iconBg: "bg-emerald-500/15",
+    iconColor: "text-emerald-400",
+    badge: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+    cta: "Find Jobs",
+    ocid: "landing.employee_button",
   },
 ];
 
@@ -87,10 +105,72 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* ===== ROLE SELECTION — TOP SECTION ===== */}
+      <section className="border-b border-border bg-gradient-to-b from-card/60 to-background">
+        <div className="max-w-5xl mx-auto px-4 pt-12 pb-10 text-center">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            Technical Tech
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground mb-2">
+            Who are you? <span className="text-primary">Choose your role</span>
+          </h2>
+          <p className="text-muted-foreground text-sm mb-8">
+            Select your role to get started — admin, customer, or employee.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {ROLE_CARDS.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={card.role}
+                  type="button"
+                  onClick={() => navigate({ to: card.href })}
+                  data-ocid={card.ocid}
+                  className={`group relative text-left p-7 rounded-2xl border bg-gradient-to-br ${card.gradient} ${card.border} transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0`}
+                >
+                  {/* Icon */}
+                  <div
+                    className={`w-16 h-16 rounded-2xl ${card.iconBg} flex items-center justify-center mb-5 transition-transform group-hover:scale-105`}
+                  >
+                    <Icon className={`w-8 h-8 ${card.iconColor}`} />
+                  </div>
+
+                  {/* Role label */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={"text-2xl font-extrabold text-foreground"}>
+                      {card.role}
+                    </span>
+                    <span
+                      className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${card.badge}`}
+                    >
+                      {card.role}
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
+                    {card.description}
+                  </p>
+
+                  {/* CTA */}
+                  <div
+                    className={`flex items-center gap-1.5 text-sm font-semibold ${card.iconColor}`}
+                  >
+                    {card.cta}
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background pointer-events-none" />
-        <div className="relative max-w-5xl mx-auto px-4 py-20 text-center">
+        <div className="relative max-w-5xl mx-auto px-4 py-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
             <ShieldCheck className="w-4 h-4" />
             Trusted Home Services
@@ -145,40 +225,6 @@ export default function LandingPage() {
               <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
-        </div>
-      </section>
-
-      {/* Navigation Cards */}
-      <section className="max-w-5xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-bold text-foreground text-center mb-10">
-          What would you like to do?
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {NAV_CARDS.map((card) => {
-            const Icon = card.icon;
-            return (
-              <button
-                key={card.href}
-                type="button"
-                onClick={() => navigate({ to: card.href })}
-                className="group text-left p-6 rounded-2xl border border-border bg-card hover:border-primary/40 hover:bg-card/80 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <Icon className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="font-semibold text-foreground mb-1">
-                  {card.title}
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {card.description}
-                </p>
-                <div className="flex items-center gap-1 text-sm text-primary font-medium">
-                  {card.cta}
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
-            );
-          })}
         </div>
       </section>
 

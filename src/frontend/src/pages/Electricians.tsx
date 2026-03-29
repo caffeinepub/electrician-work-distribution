@@ -44,7 +44,7 @@ import {
   useRemoveElectrician,
   useUpdateElectrician,
 } from "../hooks/useQueries";
-import { getQualificationLabel, getSpecialityLabel } from "../lib/utils";
+import { getQualificationLabel, getSpecialityLabel } from "../lib/helpers";
 
 interface ElectricianForm {
   name: string;

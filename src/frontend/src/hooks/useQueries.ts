@@ -182,11 +182,49 @@ export function useRemoveElectrician() {
   });
 }
 
-// ── Work Orders (local state simulation) ─────────────────────────────────────
+// ── Work Orders (localStorage-persisted simulation) ───────────────────────────
 
-// Local in-memory store for work orders (simulated backend)
-let workOrderStore: WorkOrder[] = [];
-let nextWorkOrderId = 1;
+const STORAGE_KEY = "tt_work_orders";
+const STORAGE_ID_KEY = "tt_work_order_next_id";
+
+function loadWorkOrders(): WorkOrder[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    // Restore Date objects from ISO strings
+    return parsed.map((wo: any) => ({
+      ...wo,
+      createdAt: new Date(wo.createdAt),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function saveWorkOrders(orders: WorkOrder[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+  } catch {}
+}
+
+function loadNextId(): number {
+  try {
+    const raw = localStorage.getItem(STORAGE_ID_KEY);
+    return raw ? Number.parseInt(raw, 10) : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function saveNextId(id: number) {
+  try {
+    localStorage.setItem(STORAGE_ID_KEY, String(id));
+  } catch {}
+}
+
+let workOrderStore: WorkOrder[] = loadWorkOrders();
+let nextWorkOrderId = loadNextId();
 
 export function useGetAllWorkOrders() {
   return useQuery<WorkOrder[]>({
@@ -233,13 +271,15 @@ export function useCreateFixedPriceWorkOrder() {
         customerEmail: params.customerEmail,
         customerAddress: params.customerAddress,
         customerContactNumber: params.customerContactNumber,
-        paymentAmount: 50,
+        paymentAmount: 1200,
         paymentStatus: { __kind__: "pending" },
         paymentMethod: params.paymentMethod,
         preferredEducation: params.preferredEducation,
         verificationStatus: "pending",
       };
       workOrderStore.push(newOrder);
+      saveWorkOrders(workOrderStore);
+      saveNextId(nextWorkOrderId);
       return newOrder;
     },
     onSuccess: () => {
@@ -258,6 +298,7 @@ export function useUpdateWorkOrderStatus() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.status = params.status;
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -282,6 +323,7 @@ export function useUpdateWorkOrderPayment() {
       if (params.paymentAmount !== undefined) {
         order.paymentAmount = params.paymentAmount;
       }
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -299,6 +341,7 @@ export function useApplyToWorkOrder() {
       const order = workOrderStore.find((wo) => wo.id === params.workOrderId);
       if (!order) throw new Error("Work order not found");
       order.applicationStatus = "pending";
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -319,6 +362,7 @@ export function useSubmitWorkerRating() {
       const order = workOrderStore.find((wo) => wo.id === params.orderId);
       if (!order) throw new Error("Work order not found");
       order.workerRating = { rating: params.rating, comment: params.comment };
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -364,6 +408,8 @@ export function usePendingWorkOrders() {
   return useQuery<WorkOrder[]>({
     queryKey: ["pendingWorkOrders"],
     queryFn: async () => {
+      // Reload from localStorage on each query to get latest data
+      workOrderStore = loadWorkOrders();
       return workOrderStore.filter((wo) => wo.verificationStatus === "pending");
     },
   });
@@ -386,6 +432,7 @@ export function usePendingJobApplications() {
   return useQuery<WorkOrder[]>({
     queryKey: ["pendingJobApplications"],
     queryFn: async () => {
+      workOrderStore = loadWorkOrders();
       return workOrderStore.filter((wo) => wo.applicationStatus === "pending");
     },
   });
@@ -395,6 +442,7 @@ export function usePendingPayments() {
   return useQuery<WorkOrder[]>({
     queryKey: ["pendingPayments"],
     queryFn: async () => {
+      workOrderStore = loadWorkOrders();
       return workOrderStore.filter(
         (wo) => wo.paymentStatus.__kind__ === "pending",
       );
@@ -410,6 +458,7 @@ export function useApproveWorkOrder() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.verificationStatus = "approved";
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -427,6 +476,7 @@ export function useRejectWorkOrder() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.verificationStatus = `rejected:${params.reason}`;
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -472,6 +522,7 @@ export function useApproveJobApplication() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.applicationStatus = "verifiedPendingAssignment";
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -489,6 +540,7 @@ export function useRejectJobApplication() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.applicationStatus = "declined";
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -506,6 +558,7 @@ export function useApprovePayment() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.paymentStatus = { __kind__: "confirmed" };
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -523,6 +576,7 @@ export function useFlagPayment() {
       const order = workOrderStore.find((wo) => wo.id === params.id);
       if (!order) throw new Error("Work order not found");
       order.paymentStatus = { __kind__: "flagged", flagged: params.reason };
+      saveWorkOrders(workOrderStore);
       return order;
     },
     onSuccess: () => {
@@ -555,6 +609,7 @@ export function useAssignElectricianToWorkOrder() {
         order.status = "inProgress";
         order.applicationStatus = "accepted";
       }
+      saveWorkOrders(workOrderStore);
       return params;
     },
     onSuccess: () => {

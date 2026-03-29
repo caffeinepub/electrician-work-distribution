@@ -21,8 +21,6 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useIsCallerAdmin } from "../hooks/useQueries";
 
 const portalLinks = [
   { label: "Services", href: "/services", icon: Wrench },
@@ -46,12 +44,6 @@ function isActive(href: string): boolean {
 }
 
 export default function AppSidebar() {
-  const { identity } = useInternetIdentity();
-  const isAuthenticated = !!identity;
-  const { data: isCallerAdmin } = useIsCallerAdmin();
-
-  const showAdmin = isAuthenticated && isCallerAdmin === true;
-
   return (
     <Sidebar>
       <SidebarContent>
@@ -65,6 +57,38 @@ export default function AppSidebar() {
               Technical Tech
             </span>
           </div>
+        </SidebarGroup>
+
+        <SidebarSeparator />
+
+        {/* Admin Portal Links - Always visible at top */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center gap-1.5 text-sm font-bold">
+            <ShieldCheck className="h-4 w-4 text-amber-500" />
+            <span className="text-amber-500">Admin Portal</span>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminLinks.map((link) => {
+                const Icon = link.icon;
+                const active = isActive(link.href);
+                return (
+                  <SidebarMenuItem key={link.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      className="transition-all duration-200"
+                    >
+                      <a href={link.href}>
+                        <Icon className="h-4 w-4" />
+                        <span>{link.label}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarSeparator />
@@ -95,41 +119,6 @@ export default function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* Admin Portal Links */}
-        {showAdmin && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupLabel className="flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
-                <span className="text-amber-400">Admin Portal</span>
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {adminLinks.map((link) => {
-                    const Icon = link.icon;
-                    const active = isActive(link.href);
-                    return (
-                      <SidebarMenuItem key={link.href}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={active}
-                          className="transition-all duration-200"
-                        >
-                          <a href={link.href}>
-                            <Icon className="h-4 w-4" />
-                            <span>{link.label}</span>
-                          </a>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
       </SidebarContent>
 
       <SidebarFooter>

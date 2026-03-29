@@ -1,6 +1,6 @@
 import React from "react";
+import { getPaymentStatusClass, getPaymentStatusLabel } from "../lib/helpers";
 import type { PaymentStatus } from "../lib/types";
-import { getPaymentStatusClass, getPaymentStatusLabel } from "../lib/utils";
 
 interface PaymentStatusBadgeProps {
   status: PaymentStatus;
