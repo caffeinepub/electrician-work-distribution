@@ -20,6 +20,24 @@ export interface Rating {
   comment: string;
 }
 
+export interface ApplicantDetails {
+  fullName: string;
+  fatherName: string;
+  dob: string; // ISO date string YYYY-MM-DD
+  addressLine1: string;
+  addressLine2?: string;
+  mobileNo: string;
+  gmailId: string;
+  academicQualification: string;
+  otherQualification?: string;
+  workExperience: string;
+  workingTime: string;
+  jobType: string;
+  salaryPerMonth: string;
+  salaryPerWeek: string;
+  salaryPerDay: string;
+}
+
 export interface WorkOrder {
   id: number;
   title: string;
@@ -40,6 +58,11 @@ export interface WorkOrder {
   verificationStatus: string;
   workerRating?: Rating;
   customerRating?: Rating;
+  applicantDetails?: ApplicantDetails;
+  // Cash transfer tracking
+  cashTransferAmount?: number;
+  cashTransferNote?: string;
+  cashTransferDate?: string;
 }
 
 // Re-export as namespace-like constants for components that used enum-style access

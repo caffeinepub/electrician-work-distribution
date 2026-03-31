@@ -17,6 +17,7 @@ import {
   CreditCard,
   LayoutDashboard,
   ShieldCheck,
+  UserCheck,
   Users,
   Wrench,
   Zap,
@@ -26,14 +27,19 @@ const portalLinks = [
   { label: "Services", href: "/services", icon: Wrench },
   { label: "Job Board", href: "/jobs", icon: Briefcase },
   { label: "My Bookings", href: "/my-bookings", icon: BookOpen },
+  { label: "Electricians", href: "/electricians", icon: Users },
 ];
 
 const adminLinks = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Work Orders", href: "/admin/work-orders", icon: ClipboardList },
-  { label: "Electricians", href: "/admin/electricians", icon: Users },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Verifications", href: "/admin/verifications", icon: ShieldCheck },
+  {
+    label: "Active Employees",
+    href: "/admin/active-employees",
+    icon: UserCheck,
+  },
 ];
 
 function isActive(href: string): boolean {

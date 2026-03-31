@@ -669,3 +669,229 @@ export function useGetWorkOrderApplication(workOrderId: number) {
     },
   });
 }
+
+// ── Standalone Job Applications ───────────────────────────────────────────────
+
+const JOB_APP_KEY = "tt_job_applications";
+const JOB_APP_ID_KEY = "tt_job_app_next_id";
+
+export interface JobApplication {
+  id: number;
+  fullName: string;
+  fatherName: string;
+  dob: string;
+  addressLine1: string;
+  addressLine2: string;
+  mobileNo: string;
+  gmailId: string;
+  academicQualification: string;
+  otherQualification: string;
+  workExperience: string;
+  workingTime: string;
+  jobType: string;
+  salaryPerMonth: string;
+  salaryPerWeek: string;
+  salaryPerDay: string;
+  status: "pending" | "approved" | "rejected";
+  rejectionReason?: string;
+  submittedAt: string;
+}
+
+function loadJobApps(): JobApplication[] {
+  try {
+    const raw = localStorage.getItem(JOB_APP_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveJobApps(apps: JobApplication[]) {
+  try {
+    localStorage.setItem(JOB_APP_KEY, JSON.stringify(apps));
+  } catch {}
+}
+
+function loadJobAppNextId(): number {
+  try {
+    const raw = localStorage.getItem(JOB_APP_ID_KEY);
+    return raw ? Number.parseInt(raw, 10) : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function saveJobAppNextId(id: number) {
+  try {
+    localStorage.setItem(JOB_APP_ID_KEY, String(id));
+  } catch {}
+}
+
+let jobAppNextId = loadJobAppNextId();
+
+export function useSubmitJobApplication() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      params: Omit<JobApplication, "id" | "status" | "submittedAt">,
+    ) => {
+      const apps = loadJobApps();
+      const newApp: JobApplication = {
+        ...params,
+        id: jobAppNextId++,
+        status: "pending",
+        submittedAt: new Date().toISOString(),
+      };
+      apps.push(newApp);
+      saveJobApps(apps);
+      saveJobAppNextId(jobAppNextId);
+      return newApp;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobApps"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingJobAppsFull"] });
+      queryClient.invalidateQueries({ queryKey: ["activeEmployees"] });
+    },
+  });
+}
+
+export function useAllJobApplications() {
+  return useQuery<JobApplication[]>({
+    queryKey: ["jobApps"],
+    queryFn: async () => loadJobApps(),
+  });
+}
+
+export function usePendingJobApplicationsFull() {
+  return useQuery<JobApplication[]>({
+    queryKey: ["pendingJobAppsFull"],
+    queryFn: async () => loadJobApps().filter((a) => a.status === "pending"),
+  });
+}
+
+export function useActiveEmployees() {
+  return useQuery<JobApplication[]>({
+    queryKey: ["activeEmployees"],
+    queryFn: async () => loadJobApps().filter((a) => a.status === "approved"),
+  });
+}
+
+export function useApproveJobApplicationFull() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const apps = loadJobApps();
+      const app = apps.find((a) => a.id === id);
+      if (!app) throw new Error("Application not found");
+      // Age check
+      const dob = new Date(app.dob);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+      if (age < 19)
+        throw new Error(
+          "Applicant must be at least 19 years old to be approved",
+        );
+      app.status = "approved";
+      saveJobApps(apps);
+      return app;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobApps"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingJobAppsFull"] });
+      queryClient.invalidateQueries({ queryKey: ["activeEmployees"] });
+    },
+  });
+}
+
+export function useRejectJobApplicationFull() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id: number; reason: string }) => {
+      const apps = loadJobApps();
+      const app = apps.find((a) => a.id === params.id);
+      if (!app) throw new Error("Application not found");
+      app.status = "rejected";
+      app.rejectionReason = params.reason;
+      saveJobApps(apps);
+      return app;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobApps"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingJobAppsFull"] });
+      queryClient.invalidateQueries({ queryKey: ["activeEmployees"] });
+    },
+  });
+}
+
+// ── Cash Transfers ────────────────────────────────────────────────────────────
+
+const CASH_TRANSFER_KEY = "tt_cash_transfers";
+const CASH_TRANSFER_ID_KEY = "tt_cash_transfer_next_id";
+
+export interface CashTransfer {
+  id: number;
+  amount: number;
+  note: string;
+  date: string;
+  transferType: "incoming" | "outgoing";
+  upiId?: string;
+  status: "completed" | "pending";
+}
+
+function loadCashTransfers(): CashTransfer[] {
+  try {
+    const raw = localStorage.getItem(CASH_TRANSFER_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCashTransfers(transfers: CashTransfer[]) {
+  try {
+    localStorage.setItem(CASH_TRANSFER_KEY, JSON.stringify(transfers));
+  } catch {}
+}
+
+function loadCashTransferNextId(): number {
+  try {
+    const raw = localStorage.getItem(CASH_TRANSFER_ID_KEY);
+    return raw ? Number.parseInt(raw, 10) : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function saveCashTransferNextId(id: number) {
+  try {
+    localStorage.setItem(CASH_TRANSFER_ID_KEY, String(id));
+  } catch {}
+}
+
+let cashTransferNextId = loadCashTransferNextId();
+
+export function useGetCashTransfers() {
+  return useQuery<CashTransfer[]>({
+    queryKey: ["cashTransfers"],
+    queryFn: async () => loadCashTransfers(),
+  });
+}
+
+export function useAddCashTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: Omit<CashTransfer, "id">) => {
+      const transfers = loadCashTransfers();
+      const newTransfer: CashTransfer = { ...params, id: cashTransferNextId++ };
+      transfers.push(newTransfer);
+      saveCashTransfers(transfers);
+      saveCashTransferNextId(cashTransferNextId);
+      return newTransfer;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cashTransfers"] });
+    },
+  });
+}

@@ -2,13 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Outlet } from "@tanstack/react-router";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 // Admin credentials
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "TechAdmin@2025";
-const OWNER_EMAIL = "velumanickam721@gmail.com";
+const AUTHORIZED_GMAIL = "velumanickam721@gmail.com";
 
 const STORAGE_KEY = "technicaltech_admin_auth";
 
@@ -20,6 +20,8 @@ function isAdminLoggedIn(): boolean {
   }
 }
 
+type Step = "gmail" | "login";
+
 interface ProtectedRouteProps {
   adminOnly?: boolean;
   children?: React.ReactNode;
@@ -30,27 +32,27 @@ export default function ProtectedRoute({
   children,
 }: ProtectedRouteProps) {
   const [loggedIn, setLoggedIn] = useState<boolean>(isAdminLoggedIn);
-  const [email, setEmail] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [emailError, setEmailError] = useState("");
+  const [step, setStep] = useState<Step>("gmail");
+  const [gmail, setGmail] = useState("");
+  const [gmailError, setGmailError] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   if (!adminOnly) {
     return children ? <>{children}</> : <Outlet />;
   }
 
   if (!loggedIn) {
-    function handleEmailSubmit(e: React.FormEvent) {
+    function handleGmailVerify(e: React.FormEvent) {
       e.preventDefault();
-      if (email.trim().toLowerCase() === OWNER_EMAIL) {
-        setEmailVerified(true);
-        setEmailError("");
+      if (gmail.trim().toLowerCase() === AUTHORIZED_GMAIL) {
+        setGmailError("");
+        setStep("login");
       } else {
-        setEmailError(
-          "Access denied. This portal is restricted to the admin account.",
+        setGmailError(
+          "Access denied. This portal is restricted to authorized users only.",
         );
       }
     }
@@ -60,9 +62,9 @@ export default function ProtectedRoute({
       if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
         localStorage.setItem(STORAGE_KEY, "true");
         setLoggedIn(true);
-        setError("");
+        setLoginError("");
       } else {
-        setError("Incorrect username or password. Please try again.");
+        setLoginError("Incorrect username or password. Please try again.");
       }
     }
 
@@ -80,34 +82,48 @@ export default function ProtectedRoute({
             </p>
           </div>
 
-          {!emailVerified ? (
-            /* Step 1: Gmail verification */
-            <form onSubmit={handleEmailSubmit} className="flex flex-col gap-4">
+          {step === "gmail" ? (
+            <form onSubmit={handleGmailVerify} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="admin-email">Gmail Account</Label>
+                <Label htmlFor="admin-gmail">
+                  <Mail className="inline h-4 w-4 mr-1 align-text-bottom" />
+                  Verify Your Gmail
+                </Label>
                 <Input
-                  id="admin-email"
+                  id="admin-gmail"
+                  data-ocid="admin_login.input"
                   type="email"
                   placeholder="Enter your Gmail address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={gmail}
+                  onChange={(e) => {
+                    setGmail(e.target.value);
+                    setGmailError("");
+                  }}
                   autoComplete="email"
                   required
                 />
               </div>
-              {emailError && (
-                <p className="text-sm text-destructive text-center">
-                  {emailError}
+
+              {gmailError && (
+                <p
+                  data-ocid="admin_login.error_state"
+                  className="text-sm text-destructive text-center bg-destructive/10 rounded-md px-3 py-2"
+                >
+                  🚫 {gmailError}
                 </p>
               )}
-              <Button type="submit" className="w-full mt-1">
+
+              <Button
+                type="submit"
+                data-ocid="admin_login.submit_button"
+                className="w-full mt-1 bg-amber-500 hover:bg-amber-600 text-white"
+              >
                 Verify Gmail
               </Button>
             </form>
           ) : (
-            /* Step 2: Username/password login — credentials shown only here */
             <>
-              {/* Credentials hint box — only visible after Gmail verified */}
+              {/* Credentials hint — only shown after Gmail verified */}
               <div className="mb-6 rounded-lg border border-amber-400/30 bg-amber-400/5 px-4 py-3">
                 <p className="text-xs font-semibold text-amber-400 mb-1">
                   Admin Credentials
@@ -164,12 +180,12 @@ export default function ProtectedRoute({
                   </div>
                 </div>
 
-                {error && (
+                {loginError && (
                   <p
                     data-ocid="admin_login.error_state"
                     className="text-sm text-destructive text-center"
                   >
-                    {error}
+                    {loginError}
                   </p>
                 )}
 
@@ -183,14 +199,14 @@ export default function ProtectedRoute({
 
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground text-center hover:underline"
                   onClick={() => {
-                    setEmailVerified(false);
-                    setEmail("");
-                    setError("");
+                    setStep("gmail");
+                    setGmail("");
+                    setLoginError("");
                   }}
+                  className="text-xs text-muted-foreground hover:text-foreground text-center transition-colors"
                 >
-                  Use a different Gmail account
+                  ← Use a different Gmail
                 </button>
               </form>
             </>

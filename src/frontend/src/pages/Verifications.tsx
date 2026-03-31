@@ -30,17 +30,20 @@ import type { ElectricianView } from "../backend";
 import PaymentStatusBadge from "../components/PaymentStatusBadge";
 import StatusBadge from "../components/StatusBadge";
 import {
+  type JobApplication,
   useApproveElectrician,
-  useApproveJobApplication,
+  useApproveJobApplicationFull,
   useApprovePayment,
   useApproveWorkOrder,
   useFlagPayment,
   usePendingElectricians,
   usePendingJobApplications,
+  usePendingJobApplicationsFull,
   usePendingPayments,
   usePendingWorkOrders,
   useRejectElectrician,
   useRejectJobApplication,
+  useRejectJobApplicationFull,
   useRejectWorkOrder,
 } from "../hooks/useQueries";
 import { getQualificationLabel, getSpecialityLabel } from "../lib/helpers";
@@ -51,8 +54,7 @@ export default function Verifications() {
     usePendingWorkOrders();
   const { data: pendingElectricians = [], isLoading: elLoading } =
     usePendingElectricians();
-  const { data: pendingJobApps = [], isLoading: jaLoading } =
-    usePendingJobApplications();
+  const { data: pendingJobApps = [] } = usePendingJobApplications();
   const { data: pendingPayments = [], isLoading: ppLoading } =
     usePendingPayments();
 
@@ -60,20 +62,23 @@ export default function Verifications() {
   const rejectWO = useRejectWorkOrder();
   const approveEl = useApproveElectrician();
   const rejectEl = useRejectElectrician();
-  const approveJA = useApproveJobApplication();
   const rejectJA = useRejectJobApplication();
+  const { data: pendingJobAppsFull = [], isLoading: jaFullLoading } =
+    usePendingJobApplicationsFull();
+  const approveJAFull = useApproveJobApplicationFull();
+  const rejectJAFull = useRejectJobApplicationFull();
   const approveP = useApprovePayment();
   const flagP = useFlagPayment();
 
   const [rejectDialog, setRejectDialog] = useState<{
     open: boolean;
-    type: "workOrder" | "electrician" | "jobApp" | "payment";
+    type: "workOrder" | "electrician" | "jobApp" | "payment" | "jobAppFull";
     id: number | bigint;
     reason: string;
   }>({ open: false, type: "workOrder", id: 0, reason: "" });
 
   const openRejectDialog = (
-    type: "workOrder" | "electrician" | "jobApp" | "payment",
+    type: "workOrder" | "electrician" | "jobApp" | "payment" | "jobAppFull",
     id: number | bigint,
   ) => {
     setRejectDialog({ open: true, type, id, reason: "" });
@@ -90,6 +95,9 @@ export default function Verifications() {
         toast.success("Electrician rejected.");
       } else if (type === "jobApp") {
         await rejectJA.mutateAsync({ id: id as number, reason });
+        toast.success("Job application rejected.");
+      } else if (type === "jobAppFull") {
+        await rejectJAFull.mutateAsync({ id: id as number, reason });
         toast.success("Job application rejected.");
       } else if (type === "payment") {
         await flagP.mutateAsync({ id: id as number, reason });
@@ -216,26 +224,29 @@ export default function Verifications() {
 
         {/* Job Applications Tab */}
         <TabsContent value="jobApps">
-          {jaLoading ? (
+          {jaFullLoading ? (
             <LoadingState />
-          ) : pendingJobApps.length === 0 ? (
+          ) : pendingJobAppsFull.length === 0 ? (
             <EmptyState message="No pending job applications." />
           ) : (
             <div className="grid gap-4">
-              {pendingJobApps.map((order) => (
-                <WorkOrderVerifyCard
-                  key={order.id}
-                  order={order}
+              {pendingJobAppsFull.map((app) => (
+                <JobAppFullCard
+                  key={app.id}
+                  app={app}
                   onApprove={async () => {
                     try {
-                      await approveJA.mutateAsync({ id: order.id });
+                      await approveJAFull.mutateAsync(app.id);
                       toast.success("Job application approved!");
                     } catch (err: any) {
-                      toast.error(err?.message ?? "Failed to approve.");
+                      toast.error(
+                        err?.message ??
+                          `Cannot approve: ${err?.message ?? "Failed."}`,
+                      );
                     }
                   }}
-                  onReject={() => openRejectDialog("jobApp", order.id)}
-                  isApproving={approveJA.isPending}
+                  onReject={() => openRejectDialog("jobAppFull", app.id)}
+                  isApproving={approveJAFull.isPending}
                 />
               ))}
             </div>
@@ -557,6 +568,135 @@ function PaymentVerifyCard({
           >
             <AlertCircle className="w-3.5 h-3.5 mr-1" />
             Flag
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Job Application Full Card ─────────────────────────────────────────────────
+
+function calcAge(dob: string): number {
+  const d = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age;
+}
+
+interface JobAppFullCardProps {
+  app: JobApplication;
+  onApprove: () => Promise<void> | void;
+  onReject: () => void;
+  isApproving: boolean;
+}
+
+function JobAppFullCard({
+  app,
+  onApprove,
+  onReject,
+  isApproving,
+}: JobAppFullCardProps) {
+  const [confirmed, setConfirmed] = React.useState(false);
+  const age = calcAge(app.dob);
+
+  const handleApprove = async () => {
+    await onApprove();
+    setConfirmed(true);
+  };
+
+  return (
+    <Card className="bg-white text-gray-900">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <CardTitle className="text-base">
+            #{app.id} — {app.fullName}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge
+              className={
+                age >= 19
+                  ? "bg-green-100 text-green-800 border-green-300"
+                  : "bg-red-100 text-red-800 border-red-300"
+              }
+              variant="outline"
+            >
+              Age: {age} yrs {age < 19 && "⚠️ Under 19"}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="text-amber-600 border-amber-400/50"
+            >
+              Pending
+            </Badge>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          DOB: {app.dob} · Father: {app.fatherName}
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground mb-4">
+          <span className="flex items-center gap-1">
+            <Mail className="w-3.5 h-3.5" />
+            {app.gmailId}
+          </span>
+          <span>📱 {app.mobileNo}</span>
+          <span>🎓 {app.academicQualification}</span>
+          <span>💼 Exp: {app.workExperience || "N/A"}</span>
+          <span>
+            ⏱ {app.workingTime} hrs/day · {app.jobType}
+          </span>
+          <span>
+            ₹{app.salaryPerMonth}/mo · ₹{app.salaryPerWeek}/wk · ₹
+            {app.salaryPerDay}/day
+          </span>
+          {app.otherQualification && (
+            <span className="col-span-2">Other: {app.otherQualification}</span>
+          )}
+          <span className="col-span-2 text-xs">
+            <MapPin className="w-3 h-3 inline mr-1" />
+            {app.addressLine1}
+            {app.addressLine2 ? `, ${app.addressLine2}` : ""}
+          </span>
+        </div>
+        {age < 19 && (
+          <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            Applicant is under 19 years old and cannot be approved.
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          {confirmed ? (
+            <Badge className="bg-green-500 text-white px-3 py-1 text-sm flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />✓ Job Confirmed
+            </Badge>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleApprove}
+              disabled={isApproving || age < 19}
+              className="text-green-400 border-green-400/30 bg-green-400/10 hover:bg-green-400/20 disabled:opacity-50"
+              variant="outline"
+            >
+              {isApproving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+              )}
+              Approve
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onReject}
+            className="text-red-400 border-red-400/30 hover:bg-red-400/10"
+          >
+            <XCircle className="w-3.5 h-3.5 mr-1" />
+            Reject
           </Button>
         </div>
       </CardContent>

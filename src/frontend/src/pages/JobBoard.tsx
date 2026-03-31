@@ -50,6 +50,7 @@ import {
   useApplyToWorkOrder,
   useGetAllWorkOrders,
   useIsSubscribedToJobAlerts,
+  useSubmitJobApplication,
   useSubscribeToJobAlerts,
 } from "../hooks/useQueries";
 
@@ -132,6 +133,7 @@ export default function JobBoard() {
   const { data: isSubscribed, isLoading: subLoading } =
     useIsSubscribedToJobAlerts();
   const applyMutation = useApplyToWorkOrder();
+  const submitJobApp = useSubmitJobApplication();
   const subscribeMutation = useSubscribeToJobAlerts();
 
   const [selectedWorkOrderId, setSelectedWorkOrderId] = useState<number | null>(
@@ -232,9 +234,24 @@ export default function JobBoard() {
 
   const handleSubmit = async () => {
     if (!validateStep3()) return;
-    if (!selectedWorkOrderId) return;
     try {
-      await applyMutation.mutateAsync({ workOrderId: selectedWorkOrderId });
+      await submitJobApp.mutateAsync({
+        fullName: step1.fullName,
+        fatherName: step1.fatherName,
+        dob: step1.dob,
+        addressLine1: step1.addressLine1,
+        addressLine2: step1.addressLine2,
+        mobileNo: step1.mobileNo,
+        gmailId: step1.gmailId,
+        academicQualification: step2.academicQualification,
+        otherQualification: step2.otherQualification,
+        workExperience: step2.workExperience,
+        workingTime: step2.workingTime,
+        jobType: step2.jobType,
+        salaryPerMonth: step3.salaryPerMonth,
+        salaryPerWeek: step3.salaryPerWeek,
+        salaryPerDay: step3.salaryPerDay,
+      });
       toast.success("Application Confirmed! You're on the waiting list.", {
         duration: 4000,
         icon: <PartyPopper className="w-4 h-4 text-green-500" />,

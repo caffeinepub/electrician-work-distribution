@@ -22,6 +22,7 @@ const WorkOrders = lazy(() => import("./pages/WorkOrders"));
 const Electricians = lazy(() => import("./pages/Electricians"));
 const Payments = lazy(() => import("./pages/Payments"));
 const Verifications = lazy(() => import("./pages/Verifications"));
+const ActiveEmployees = lazy(() => import("./pages/ActiveEmployees"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,6 +83,17 @@ const myBookingsRoute = createRoute({
   ),
 });
 
+// Public electricians route (normal portal)
+const electriciansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/electricians",
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <Electricians />
+    </Suspense>
+  ),
+});
+
 // Admin protected parent route
 const adminProtectedRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -113,16 +125,6 @@ const adminWorkOrdersRoute = createRoute({
   ),
 });
 
-const adminElectriciansRoute = createRoute({
-  getParentRoute: () => adminProtectedRoute,
-  path: "/electricians",
-  component: () => (
-    <Suspense fallback={<LoadingFallback />}>
-      <Electricians />
-    </Suspense>
-  ),
-});
-
 const adminPaymentsRoute = createRoute({
   getParentRoute: () => adminProtectedRoute,
   path: "/payments",
@@ -143,17 +145,28 @@ const adminVerificationsRoute = createRoute({
   ),
 });
 
+const adminActiveEmployeesRoute = createRoute({
+  getParentRoute: () => adminProtectedRoute,
+  path: "/active-employees",
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <ActiveEmployees />
+    </Suspense>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   landingRoute,
   servicesRoute,
   jobBoardRoute,
   myBookingsRoute,
+  electriciansRoute,
   adminProtectedRoute.addChildren([
     adminDashboardRoute,
     adminWorkOrdersRoute,
-    adminElectriciansRoute,
     adminPaymentsRoute,
     adminVerificationsRoute,
+    adminActiveEmployeesRoute,
   ]),
 ]);
 
